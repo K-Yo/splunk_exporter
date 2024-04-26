@@ -1,8 +1,12 @@
 package exporter
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
@@ -24,17 +28,18 @@ var (
 		"Was the last query of Splunk successful.",
 		nil, nil,
 	)
-	average_input = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "input_bandwidth"),
-		"What is the average input bandwidth",
-		nil, nil,
+	total_event_count = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "total_event_count"),
+		"total_event_count",
+		[]string{"data_name", "component", "log_level"}, nil,
 	)
 )
 
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
 type Exporter struct {
-	client *splunkclient.Client
-	logger log.Logger
+	client  *splunkclient.Client
+	logger  log.Logger
+	metrics map[string]*prometheus.Desc
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
@@ -88,7 +93,7 @@ func New(opts SplunkOpts, logger log.Logger) (*Exporter, error) {
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
-	ch <- average_input
+	ch <- total_event_count
 }
 
 // Collect fetches the stats from configured Splunk and delivers them
@@ -108,21 +113,69 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) collectServicesMetric(ch chan<- prometheus.Metric) bool {
-	entry := &splunk.ServerIntrospectionIndexer{}
-	err := e.client.Read(entry)
-	if err != nil {
-		level.Error(e.logger).Log("msg", "Could not read object in Splunk", "err", err)
-		return false
+	index := "_metrics"
+	metric := "spl.intr.disk_objects.Indexes.data.total_event_count"
+	builder := func(req *http.Request) error {
+		u, err := url.Parse(fmt.Sprintf("%s/%s", e.client.URL, "services/search/v2/jobs"))
+		if err != nil {
+			return err
+		}
+		req.URL = u
+
+		req.Method = http.MethodPost
+
+		v := url.Values{}
+		v.Set("exec_mode", "oneshot")
+		v.Set("output_mode", "json")
+		v.Set("search", splunk.GetMetricQuery(index, metric))
+		req.Body = io.NopCloser(strings.NewReader(v.Encode()))
+
+		err = e.client.AuthenticateRequest(e.client, req)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	level.Debug(e.logger).Log("msg", "Received metric", "namespace", entry.ID.Namespace, "average_KBps", entry.Content.AverageKBps)
-	// value, err := strconv.ParseFloat(entry.Content.AverageKBps, 64)
-	if err != nil {
-		level.Error(e.logger).Log("msg", "Failed to parse metric as float", "namespace", entry.ID.Namespace, "name", "average_KBps", "value", entry.Content.AverageKBps)
-		return false
+	handler := func(resp *http.Response) error {
+		var data splunk.APIResult
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			level.Error(e.logger).Log("msg", "could not decode payload", "err", err, "status", resp.Status)
+			return err
+		}
+		level.Info(e.logger).Log("msg", "received response from search", "status", resp.Status, "num_results", len(data.Results))
+		for _, m := range data.Results {
+			name, ok := m["metric_name"]
+			if !ok {
+				// we ignore this result
+				continue
+			}
+			delete(m, "metric_name")
+			level.Info(e.logger).Log("msg", "processing metric", "metric_name", name)
+			value, ok := m["value"]
+			if !ok {
+				// we ignore this result
+				continue
+			}
+			fValue, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				continue
+			}
+			delete(m, "value")
+			labelValues := make([]string, 0)
+			for _, k := range []string{"data.name", "component", "log_level"} {
+				labelValues = append(labelValues, m[k])
+			}
+			ch <- prometheus.MustNewConstMetric(
+				total_event_count, prometheus.GaugeValue, fValue, labelValues...,
+			)
+		}
+		return nil
 	}
-	ch <- prometheus.MustNewConstMetric(
-		average_input, prometheus.GaugeValue, entry.Content.AverageKBps,
-	)
+	e.client.RequestAndHandle(builder, handler)
+	// TODO
+	// ch <- prometheus.MustNewConstMetric(
+	// 	average_input, prometheus.GaugeValue, entry.Content.AverageKBps,
+	// )
 	return true
 }
 
