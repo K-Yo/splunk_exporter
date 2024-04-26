@@ -3,9 +3,9 @@ package exporter
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 
+	"github.com/K-Yo/splunk_exporter/config"
 	"github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -37,6 +37,15 @@ type Exporter struct {
 	logger log.Logger
 }
 
+func (e *Exporter) UpdateConf(conf *config.Config) {
+	// FIXME need to re-validate params
+	e.client.TLSInsecureSkipVerify = conf.Insecure
+	e.client.URL = conf.URL
+	e.client.Authenticator = authenticators.Token{
+		Token: conf.Token,
+	}
+}
+
 type SplunkOpts struct {
 	URI      string
 	Token    string
@@ -62,8 +71,9 @@ func New(opts SplunkOpts, logger log.Logger) (*Exporter, error) {
 		Token: opts.Token,
 	}
 	client := splunkclient.Client{
-		URL:           opts.URI,
-		Authenticator: authenticator,
+		URL:                   opts.URI,
+		Authenticator:         authenticator,
+		TLSInsecureSkipVerify: opts.Insecure,
 	}
 
 	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
@@ -105,13 +115,13 @@ func (e *Exporter) collectServicesMetric(ch chan<- prometheus.Metric) bool {
 		return false
 	}
 	level.Debug(e.logger).Log("msg", "Received metric", "namespace", entry.ID.Namespace, "average_KBps", entry.Content.AverageKBps)
-	value, err := strconv.ParseFloat(entry.Content.AverageKBps, 64)
+	// value, err := strconv.ParseFloat(entry.Content.AverageKBps, 64)
 	if err != nil {
 		level.Error(e.logger).Log("msg", "Failed to parse metric as float", "namespace", entry.ID.Namespace, "name", "average_KBps", "value", entry.Content.AverageKBps)
 		return false
 	}
 	ch <- prometheus.MustNewConstMetric(
-		average_input, prometheus.GaugeValue, value,
+		average_input, prometheus.GaugeValue, entry.Content.AverageKBps,
 	)
 	return true
 }

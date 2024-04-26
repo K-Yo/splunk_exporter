@@ -6,7 +6,7 @@ import (
 
 // RoleContent defines the Content for a Role.
 type ServerIntrospectionIndexerContent struct {
-	AverageKBps string `json:"average_KBps" values:"-"`
+	AverageKBps float64 `json:"average_KBps" values:"-"`
 }
 
 // Role defines a Splunk role.

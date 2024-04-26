@@ -134,6 +134,7 @@ func run() int {
 					rc <- nil
 				}
 			}
+			exp.UpdateConf(sc.C)
 		}
 	}()
 
