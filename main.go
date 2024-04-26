@@ -26,12 +26,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/K-Yo/splunk_exporter/config"
+	"github.com/K-Yo/splunk_exporter/exporter"
 )
 
 var (
 	sc = config.NewSafeConfig(prometheus.DefaultRegisterer)
 
-	configFile     = kingpin.Flag("config.file", "Blackbox exporter configuration file.").Default("blackbox.yml").String()
+	configFile     = kingpin.Flag("config.file", "Blackbox exporter configuration file.").Default("splunk_exporter.yml").String()
 	timeoutOffset  = kingpin.Flag("timeout-offset", "Offset to subtract from timeout in seconds.").Default("0.5").Float64()
 	configCheck    = kingpin.Flag("config.check", "If true validate the config file and then exit.").Default().Bool()
 	logLevelProber = kingpin.Flag("log.prober", "Log level from probe requests. One of: [debug, info, warn, error, none]").Default("none").String()
@@ -42,7 +43,9 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(versioncollector.NewCollector("splunk_exporter"))
+	prometheus.MustRegister(
+		versioncollector.NewCollector("splunk_exporter"),
+	)
 }
 
 func main() {
@@ -61,6 +64,25 @@ func run() int {
 
 	level.Info(logger).Log("msg", "Starting splunk_exporter", "version", version.Info())
 	level.Info(logger).Log("build_context", version.BuildContext())
+
+	if err := sc.ReloadConfig(*configFile, logger); err != nil {
+		level.Error(logger).Log("msg", "Error loading config", "err", err)
+		return 1
+	}
+
+	// register exporter
+	opts := exporter.SplunkOpts{
+		URI:      sc.C.URL,
+		Token:    sc.C.Token,
+		Insecure: sc.C.Insecure,
+	}
+	exp, err := exporter.New(opts, logger)
+	if err != nil {
+		level.Error(logger).Log("msg", "could not create exporter", "err", err)
+		return 1
+	}
+
+	prometheus.MustRegister(exp)
 
 	// Infer or set Splunk exporter externalURL
 	listenAddrs := toolkitFlags.WebListenAddresses
@@ -145,12 +167,6 @@ func run() int {
 	http.HandleFunc(path.Join(*routePrefix, "/-/healthy"), func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Healthy"))
-	})
-	http.HandleFunc(path.Join(*routePrefix, "/probe"), func(w http.ResponseWriter, r *http.Request) {
-		// sc.Lock()
-		// conf := sc.C
-		// sc.Unlock()
-		// prober.Handler(w, r, conf, logger, rh, *timeoutOffset, nil, moduleUnknownCounter, logLevelProber)
 	})
 	http.HandleFunc(*routePrefix, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")

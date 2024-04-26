@@ -6,14 +6,15 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Instances map[string]string `yaml:"instances"`
+	URL      string `yaml:"url"`
+	Token    string `yaml:"token"`
+	Insecure bool   `yaml:"insecure"` // defaults to false
 }
 
 type SafeConfig struct {
@@ -59,18 +60,6 @@ func (sc *SafeConfig) ReloadConfig(confFile string, logger log.Logger) (err erro
 
 	if err = decoder.Decode(c); err != nil {
 		return fmt.Errorf("error parsing config file: %s", err)
-	}
-
-	for name := range c.Instances {
-		level.Debug(logger).Log("msg", "just putting this here temporarily", "instance", name)
-		// if module.HTTP.NoFollowRedirects != nil {
-		// 	// Hide the old flag from the /config page.
-		// 	module.HTTP.NoFollowRedirects = nil
-		// 	c.Modules[name] = module
-		// 	if logger != nil {
-		// 		level.Warn(logger).Log("msg", "no_follow_redirects is deprecated and will be removed in the next release. It is replaced by follow_redirects.", "module", name)
-		// 	}
-		// }
 	}
 
 	sc.Lock()

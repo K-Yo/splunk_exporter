@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+./splunk_exporter
 
 # Test binary, built with `go test -c`
 *.test
