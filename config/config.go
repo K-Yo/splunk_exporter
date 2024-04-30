@@ -11,10 +11,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Metric struct {
+	Index string `yaml:"index"`
+	Name  string `yaml:"name"`
+}
+
 type Config struct {
-	URL      string `yaml:"url"`
-	Token    string `yaml:"token"`
-	Insecure bool   `yaml:"insecure"` // defaults to false
+	URL      string   `yaml:"url"`
+	Token    string   `yaml:"token"`
+	Insecure bool     `yaml:"insecure"` // defaults to false
+	Metrics  []Metric `yaml:"metrics"`
 }
 
 type SafeConfig struct {

@@ -1,5 +1,12 @@
 # splunk_exporter
 
+## Run
+
+```shell
+cd /deploy
+bash run.sh
+```
+
 ## metrics
 
 ### from API
@@ -46,3 +53,4 @@ metrics:
 - add to config the list of metrics to export (index + name)
 - create an helper for logging
 - cut http in smaller bits
+- add API metrics (see old commits) because internal metrics are not reliable

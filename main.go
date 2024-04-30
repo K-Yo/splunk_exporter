@@ -76,7 +76,7 @@ func run() int {
 		Token:    sc.C.Token,
 		Insecure: sc.C.Insecure,
 	}
-	exp, err := exporter.New(opts, logger)
+	exp, err := exporter.New(opts, logger, sc.C.Metrics)
 	if err != nil {
 		level.Error(logger).Log("msg", "could not create exporter", "err", err)
 		return 1

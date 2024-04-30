@@ -1,12 +1,8 @@
 package exporter
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
@@ -37,16 +33,16 @@ var (
 
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
 type Exporter struct {
-	client  *splunkclient.Client
+	splunk  *splunk.Splunk
 	logger  log.Logger
-	metrics map[string]*prometheus.Desc
+	metrics *MetricsManager
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
 	// FIXME need to re-validate params
-	e.client.TLSInsecureSkipVerify = conf.Insecure
-	e.client.URL = conf.URL
-	e.client.Authenticator = authenticators.Token{
+	e.splunk.Client.TLSInsecureSkipVerify = conf.Insecure
+	e.splunk.Client.URL = conf.URL
+	e.splunk.Client.Authenticator = authenticators.Token{
 		Token: conf.Token,
 	}
 }
@@ -58,7 +54,7 @@ type SplunkOpts struct {
 }
 
 // New creates a new exporter for Splunk metrics
-func New(opts SplunkOpts, logger log.Logger) (*Exporter, error) {
+func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Exporter, error) {
 
 	uri := opts.URI
 	if !strings.Contains(uri, "://") {
@@ -81,11 +77,17 @@ func New(opts SplunkOpts, logger log.Logger) (*Exporter, error) {
 		TLSInsecureSkipVerify: opts.Insecure,
 	}
 
+	spk := splunk.Splunk{
+		Client: &client,
+		Logger: logger,
+	}
+
 	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
 
 	return &Exporter{
-		client: &client,
-		logger: logger,
+		splunk:  &spk,
+		logger:  logger,
+		metrics: newMetricsManager(metricsConf, namespace, &spk),
 	}, nil
 }
 
@@ -115,68 +117,25 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectServicesMetric(ch chan<- prometheus.Metric) bool {
 	index := "_metrics"
 	metric := "spl.intr.disk_objects.Indexes.data.total_event_count"
-	builder := func(req *http.Request) error {
-		u, err := url.Parse(fmt.Sprintf("%s/%s", e.client.URL, "services/search/v2/jobs"))
-		if err != nil {
-			return err
+
+	processMetricCallback := func(measure splunk.MetricMeasure) error {
+
+		labelValues := make([]string, 0)
+		for _, k := range []string{"data.name", "component", "log_level"} {
+			labelValues = append(labelValues, measure.Labels[k])
 		}
-		req.URL = u
-
-		req.Method = http.MethodPost
-
-		v := url.Values{}
-		v.Set("exec_mode", "oneshot")
-		v.Set("output_mode", "json")
-		v.Set("search", splunk.GetMetricQuery(index, metric))
-		req.Body = io.NopCloser(strings.NewReader(v.Encode()))
-
-		err = e.client.AuthenticateRequest(e.client, req)
-		if err != nil {
-			return err
-		}
+		ch <- prometheus.MustNewConstMetric(
+			total_event_count, prometheus.GaugeValue, measure.Value, labelValues...,
+		)
 		return nil
 	}
-	handler := func(resp *http.Response) error {
-		var data splunk.APIResult
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			level.Error(e.logger).Log("msg", "could not decode payload", "err", err, "status", resp.Status)
-			return err
-		}
-		level.Info(e.logger).Log("msg", "received response from search", "status", resp.Status, "num_results", len(data.Results))
-		for _, m := range data.Results {
-			name, ok := m["metric_name"]
-			if !ok {
-				// we ignore this result
-				continue
-			}
-			delete(m, "metric_name")
-			level.Info(e.logger).Log("msg", "processing metric", "metric_name", name)
-			value, ok := m["value"]
-			if !ok {
-				// we ignore this result
-				continue
-			}
-			fValue, err := strconv.ParseFloat(value, 64)
-			if err != nil {
-				continue
-			}
-			delete(m, "value")
-			labelValues := make([]string, 0)
-			for _, k := range []string{"data.name", "component", "log_level"} {
-				labelValues = append(labelValues, m[k])
-			}
-			ch <- prometheus.MustNewConstMetric(
-				total_event_count, prometheus.GaugeValue, fValue, labelValues...,
-			)
-		}
-		return nil
+
+	if err := e.splunk.GetMetricValues(index, metric, processMetricCallback); err != nil {
+		level.Error(e.logger).Log("msg", "Failed to get metric values", "err", err)
+		return false
+	} else {
+		return true
 	}
-	e.client.RequestAndHandle(builder, handler)
-	// TODO
-	// ch <- prometheus.MustNewConstMetric(
-	// 	average_input, prometheus.GaugeValue, entry.Content.AverageKBps,
-	// )
-	return true
 }
 
 // func (e *Exporter) collectHealthStateMetric(ch chan<- prometheus.Metric) bool {

@@ -1,6 +1,6 @@
 package splunk
 
-type APIResult struct {
+type SearchAPIResult struct {
 	Results     []map[string]string `json:"results"`
 	Fields      []APIField          `json:"fields"`
 	Preview     bool                `json:"preview"`
