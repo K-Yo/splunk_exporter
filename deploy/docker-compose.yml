@@ -1,0 +1,73 @@
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data: {}
+
+services:
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - ./grafana/provisioning/:/etc/grafana/provisioning/:ro
+    ports:
+     - '3000:3000'
+    expose:
+      - 3000
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    expose:
+      - 9090
+    networks:
+      - monitoring
+  
+  splunk_exporter:
+    restart: unless-stopped
+    container_name: splunk_exporter
+    build:
+      context: ..
+    image: splunk_exporter:latest
+    ports:
+      - 9115:9115
+    expose:
+      - 9115
+    networks:
+      - monitoring
+    volumes:
+      - ./splunk_exporter.yml:/splunk_exporter.yml:ro
+    command: /splunk_exporter --config.file /splunk_exporter.yml
+    # add /etc/ssl/certs/ca-certificates.crt if needed
+  
+  splunk:
+    image: splunk/splunk:latest
+    restart: unless-stopped
+    container_name: splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=splunkadmin
+    expose:
+      - 8000
+      - 8089
+    ports:
+      - 8000:8000
+      - 8089:8089
+    networks:
+      - monitoring

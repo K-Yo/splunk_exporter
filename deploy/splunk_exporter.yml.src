@@ -1,0 +1,3 @@
+url: https://splunk:8089
+token: '${SPLUNK_TOKEN}'
+insecure: true

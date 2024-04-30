@@ -20,3 +20,6 @@
 
 # Go workspace file
 go.work
+
+# runtime files
+/deploy/splunk_exporter.yml
