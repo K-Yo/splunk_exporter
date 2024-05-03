@@ -87,7 +87,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 	return &Exporter{
 		splunk:  &spk,
 		logger:  logger,
-		metrics: newMetricsManager(metricsConf, namespace, &spk),
+		metrics: newMetricsManager(metricsConf, namespace, &spk, logger),
 	}, nil
 }
 
@@ -101,7 +101,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the stats from configured Splunk and delivers them
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	ok := e.collectServicesMetric(ch)
+	ok := e.collectConfiguredMetrics(ch)
 	// ok = e.collectHealthStateMetric(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
@@ -114,80 +114,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e *Exporter) collectServicesMetric(ch chan<- prometheus.Metric) bool {
-	index := "_metrics"
-	metric := "spl.intr.disk_objects.Indexes.data.total_event_count"
+// collectConfiguredMetrics gets metric measures from splunk indexes as specified by configuration
+func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 
-	processMetricCallback := func(measure splunk.MetricMeasure) error {
+	return e.metrics.ProcessMeasures(ch)
 
-		labelValues := make([]string, 0)
-		for _, k := range []string{"data.name", "component", "log_level"} {
-			labelValues = append(labelValues, measure.Labels[k])
-		}
-		ch <- prometheus.MustNewConstMetric(
-			total_event_count, prometheus.GaugeValue, measure.Value, labelValues...,
-		)
-		return nil
-	}
-
-	if err := e.splunk.GetMetricValues(index, metric, processMetricCallback); err != nil {
-		level.Error(e.logger).Log("msg", "Failed to get metric values", "err", err)
-		return false
-	} else {
-		return true
-	}
 }
-
-// func (e *Exporter) collectHealthStateMetric(ch chan<- prometheus.Metric) bool {
-// 	checks, _, err := e.client.Health().State("any", &e.queryOptions)
-// 	if err != nil {
-// 		level.Error(e.logger).Log("msg", "Failed to query service health", "err", err)
-// 		return false
-// 	}
-// 	for _, hc := range checks {
-// 		var passing, warning, critical, maintenance float64
-
-// 		switch hc.Status {
-// 		case consul_api.HealthPassing:
-// 			passing = 1
-// 		case consul_api.HealthWarning:
-// 			warning = 1
-// 		case consul_api.HealthCritical:
-// 			critical = 1
-// 		case consul_api.HealthMaint:
-// 			maintenance = 1
-// 		}
-
-// 		if hc.ServiceID == "" {
-// 			ch <- prometheus.MustNewConstMetric(
-// 				nodeChecks, prometheus.GaugeValue, passing, hc.CheckID, hc.Node, consul_api.HealthPassing,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				nodeChecks, prometheus.GaugeValue, warning, hc.CheckID, hc.Node, consul_api.HealthWarning,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				nodeChecks, prometheus.GaugeValue, critical, hc.CheckID, hc.Node, consul_api.HealthCritical,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				nodeChecks, prometheus.GaugeValue, maintenance, hc.CheckID, hc.Node, consul_api.HealthMaint,
-// 			)
-// 		} else {
-// 			ch <- prometheus.MustNewConstMetric(
-// 				serviceChecks, prometheus.GaugeValue, passing, hc.CheckID, hc.Node, hc.ServiceID, hc.ServiceName, consul_api.HealthPassing,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				serviceChecks, prometheus.GaugeValue, warning, hc.CheckID, hc.Node, hc.ServiceID, hc.ServiceName, consul_api.HealthWarning,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				serviceChecks, prometheus.GaugeValue, critical, hc.CheckID, hc.Node, hc.ServiceID, hc.ServiceName, consul_api.HealthCritical,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				serviceChecks, prometheus.GaugeValue, maintenance, hc.CheckID, hc.Node, hc.ServiceID, hc.ServiceName, consul_api.HealthMaint,
-// 			)
-// 			ch <- prometheus.MustNewConstMetric(
-// 				serviceCheckNames, prometheus.GaugeValue, 1, hc.ServiceID, hc.ServiceName, hc.CheckID, hc.Name, hc.Node,
-// 			)
-// 		}
-// 	}
-// 	return true
-// }

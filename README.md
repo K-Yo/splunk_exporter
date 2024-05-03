@@ -2,9 +2,24 @@
 
 ## Run
 
+You need docker compose installed, a bash helper is provided to start the exporter and the whole test bench as a [docker compose environment](./deploy/README.md).
+
 ```shell
 cd /deploy
 bash run.sh
+```
+
+To stop it:
+
+```shell
+docker compose down
+```
+
+## Contribute
+
+After doing some changes, possible to re-deploy splunk_exporter with the following command
+```shell
+docker compose up -d --build splunk_exporter
 ```
 
 ## metrics

@@ -1,3 +1,8 @@
 url: https://splunk:8089
 token: '${SPLUNK_TOKEN}'
 insecure: true
+metrics:
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_event_count
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_bucket_count
