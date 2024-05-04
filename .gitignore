@@ -7,7 +7,6 @@
 *.dll
 *.so
 *.dylib
-./splunk_exporter
 
 # Test binary, built with `go test -c`
 *.test
@@ -22,5 +21,5 @@
 go.work
 
 # runtime files
-/deploy/splunk_exporter.yml
+splunk_exporter.yml
 /splunk_exporter

@@ -25,8 +25,28 @@ type searchCallback func(data *SearchAPIResult, logger log.Logger) error
 // it will return nil if no dimension exists
 func (s *Splunk) GetDimensions(index string, metric string) []string {
 	search := dimensionsQuery(index, metric)
-	s.query(search, nil) // FIXME
-	return nil
+	ch := make(chan string)
+
+	callback := func(data *SearchAPIResult, logger log.Logger) error {
+		for _, d := range data.Results {
+			ch <- d["dims"]
+		}
+		close(ch)
+		return nil
+	}
+
+	go func() {
+		err := s.query(search, callback)
+		if err != nil {
+			level.Error(s.Logger).Log("msg", "failed to get dimensions", "err", err)
+		}
+	}()
+	// get all dimensions
+	ret := make([]string, 0)
+	for d := range ch {
+		ret = append(ret, d)
+	}
+	return ret
 }
 
 type MetricMeasure struct {
@@ -38,6 +58,7 @@ type MetricMeasure struct {
 // callback will be called on each measure
 // errors on callback will be logged, and processing will continue
 func (s *Splunk) GetMetricValues(index string, metric string, callback func(measure MetricMeasure) error) error {
+	level.Debug(s.Logger).Log("msg", "Getting metric values", "index", index, "metric_name", metric)
 	search := metricQuery(index, metric)
 	queryCallback := func(data *SearchAPIResult, logger log.Logger) error {
 		for _, m := range data.Results {
@@ -48,7 +69,7 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 				continue
 			}
 			delete(m, "metric_name")
-			level.Info(logger).Log("msg", "processing metric", "metric_name", name)
+			level.Debug(logger).Log("msg", "processing metric", "metric_name", name)
 			value, ok := m["value"]
 			if !ok {
 				level.Error(s.Logger).Log("msg", "could not find \"value\" in splunk results.")
@@ -78,6 +99,7 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 
 // query will search splunk
 func (s *Splunk) query(search string, callbackFunc searchCallback) error {
+	level.Debug(s.Logger).Log("msg", "performing Splunk query", "search", search)
 	builder := func(req *http.Request) error {
 		u, err := url.Parse(fmt.Sprintf("%s/%s", s.Client.URL, "services/search/v2/jobs"))
 		if err != nil {
@@ -105,7 +127,7 @@ func (s *Splunk) query(search string, callbackFunc searchCallback) error {
 			level.Error(s.Logger).Log("msg", "could not decode payload", "err", err, "status", resp.Status)
 			return err
 		}
-		level.Info(s.Logger).Log("msg", "received response from search", "status", resp.Status, "num_results", len(data.Results))
+		level.Info(s.Logger).Log("msg", "received response from search, calling callback", "status", resp.Status, "num_results", len(data.Results))
 		return callbackFunc(&data, s.Logger)
 	}
 	return s.Client.RequestAndHandle(builder, handler)
