@@ -12,10 +12,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type Metric struct {
+	Desc      *prometheus.Desc
+	LabelsMap map[string]string //  key is splunk dimension, value is prom label. they are ordered.
+}
 type MetricsManager struct {
-	splunk    *splunklib.Splunk           // Splunk client
-	namespace string                      // prometheus namespace for the metrics
-	metrics   map[string]*prometheus.Desc // index format is index&metric_name
+	splunk    *splunklib.Splunk // Splunk client
+	namespace string            // prometheus namespace for the metrics
+	metrics   map[string]Metric // index format is index&metric_name
 	logger    log.Logger
 }
 
@@ -29,12 +33,16 @@ type MetricsManager struct {
 func (mm *MetricsManager) Add(metric config.Metric) {
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
 	name := mm.normalizeName(metric.Name)
-	labels := mm.getLabels(metric)
-	mm.metrics[key] = prometheus.NewDesc(
-		prometheus.BuildFQName(mm.namespace, "", name),
-		fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
-		labels, nil,
-	)
+	labelsMap, labelsValues := mm.getLabels(metric)
+	mm.metrics[key] = Metric{
+		LabelsMap: labelsMap,
+		Desc: prometheus.NewDesc(
+			prometheus.BuildFQName(mm.namespace, "", name),
+			fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
+			labelsValues, nil,
+		),
+	}
+
 }
 
 // ProcessMeasures will get all measures and send generated metrics in channel
@@ -65,20 +73,20 @@ func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 
 // ProcessOneMeasure gets a measure from splunk then calls the callback
 func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunk.MetricMeasure, *prometheus.Desc) error) bool {
-	desc, ok := mm.metrics[key]
+	metric, ok := mm.metrics[key]
 	if !ok {
 		level.Error(mm.logger).Log("msg", "Unknown metric name", "name", key)
 		return false
 	}
-	metric, index, err := mm.parseMetricKey(key)
+	metricName, index, err := mm.parseMetricKey(key)
 	if err != nil {
 		level.Error(mm.logger).Log("msg", "failed parsing a metric key", "key", key, "error", err)
 	}
 
 	cb := func(m splunklib.MetricMeasure) error {
-		return callback(m, desc)
+		return callback(m, metric.Desc)
 	}
-	err = mm.splunk.GetMetricValues(index, metric, cb)
+	err = mm.splunk.GetMetricValues(index, metricName, cb)
 
 	if err != nil {
 		level.Error(mm.logger).Log("msg", "Failed getting metric values", "err", err)
@@ -89,8 +97,18 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunk.Met
 }
 
 // getLabels retrieves Labels (Prometheus terminology, called dimensions in Splunk) for given metric
-func (mm *MetricsManager) getLabels(metric config.Metric) []string {
-	return mm.splunk.GetDimensions(metric.Index, metric.Name)
+// it then creates a map to rename labels according to prometheus rules
+func (mm *MetricsManager) getLabels(metric config.Metric) (map[string]string, []string) {
+	labels := mm.splunk.GetDimensions(metric.Index, metric.Name)
+	level.Debug(mm.logger).Log("msg", "Retrieved labels for metric", "index", metric.Index, "metricName", metric.Name, "labels", strings.Join(labels, ", "))
+	labelsMap := make(map[string]string)
+	labelsValues := make([]string, 0)
+	for _, l := range labels {
+		labelValue := strings.Replace(l, ".", "_", -1)
+		labelsMap[l] = labelValue
+		labelsValues = append(labelsValues, labelValue)
+	}
+	return labelsMap, labelsValues
 }
 
 // normalizeName will format a splunk metric name so it can be accepted by prometheus
@@ -111,15 +129,15 @@ func (mm *MetricsManager) parseMetricKey(key string) (metricName string, indexNa
 	if !(len(parts) == 2) {
 		err = fmt.Errorf("too many \"&\" in key: \"%s\"", key)
 	}
-	metricName = parts[0]
-	indexName = parts[1]
-
+	indexName = parts[0]
+	metricName = parts[1]
+	level.Debug(mm.logger).Log("msg", "Parsed key into metric and index", "key", key, "metricName", metricName, "index", indexName)
 	return
 }
 
 // newMetrics builds prom metrics for each of the settings configuration.
 func newMetricsManager(conf []config.Metric, namespace string, splunk *splunklib.Splunk, logger log.Logger) *MetricsManager {
-	metricsMap := make(map[string]*prometheus.Desc)
+	metricsMap := make(map[string]Metric)
 	mm := MetricsManager{
 		splunk:    splunk,
 		namespace: namespace,

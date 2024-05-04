@@ -51,6 +51,7 @@ func main() {
 func run() int {
 
 	kingpin.CommandLine.UsageWriter(os.Stdout)
+
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.Version(version.Print("splunk_exporter"))

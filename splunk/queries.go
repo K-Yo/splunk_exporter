@@ -23,8 +23,10 @@ func metricQuery(index string, metric string) string {
 // dimensionsQuery queries for dimensions names for one metric
 func dimensionsQuery(index string, metric string) string {
 	return fmt.Sprintf(`
-		| mcatalog values(_dims)
+		| mcatalog values(_dims) as dims
 		  where index="%s" metric_name="%s"
-		  by metric_name`,
+		  by metric_name
+		| fields dims
+		| mvexpand dims`,
 		index, metric)
 }
