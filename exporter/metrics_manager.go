@@ -2,15 +2,19 @@ package exporter
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
-	"github.com/K-Yo/splunk_exporter/splunk"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+)
+
+var (
+	invalidPromNameChar = regexp.MustCompile(`[^a-zA-Z0-9_]`) // Regex to match a valid Prometheus Name
 )
 
 type Metric struct {
@@ -51,7 +55,7 @@ func (mm *MetricsManager) Add(metric config.Metric) {
 func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 	level.Info(mm.logger).Log("msg", "Getting custom measures")
 
-	processMetricCallback := func(measure splunk.MetricMeasure, descriptor *prometheus.Desc) error {
+	processMetricCallback := func(measure splunklib.MetricMeasure, descriptor *prometheus.Desc) error {
 
 		labelValues := make([]string, 0)
 		labelKeys := make([]string, 0)
@@ -69,7 +73,7 @@ func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 	}
 
 	ret := true
-	for key, _ := range mm.metrics {
+	for key := range mm.metrics {
 		ret = ret && mm.ProcessOneMeasure(key, processMetricCallback)
 	}
 
@@ -78,7 +82,7 @@ func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 }
 
 // ProcessOneMeasure gets a measure from splunk then calls the callback
-func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunk.MetricMeasure, *prometheus.Desc) error) bool {
+func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.MetricMeasure, *prometheus.Desc) error) bool {
 	metric, ok := mm.metrics[key]
 	if !ok {
 		level.Error(mm.logger).Log("msg", "Unknown metric name", "name", key)
@@ -114,17 +118,17 @@ func (mm *MetricsManager) getLabels(metric config.Metric) (map[string]string, []
 	labelsPromNames := make([]string, 0)
 	slices.Sort(labelsSplunkNames)
 	for _, labelSplunkName := range labelsSplunkNames {
-		labelPromName := strings.Replace(labelSplunkName, ".", "_", -1)
+		labelPromName := mm.normalizeName(labelSplunkName)
 		labelsMap[labelSplunkName] = labelPromName
 		labelsPromNames = append(labelsPromNames, labelPromName)
 	}
 	return labelsMap, labelsPromNames
 }
 
-// normalizeName will format a splunk metric name so it can be accepted by prometheus
-// FIXME update this method to match prometheus constraints
+// normalizeName will format a splunk metric name (or any other name) so it can be accepted by prometheus
+// see https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 func (mm *MetricsManager) normalizeName(oldName string) string {
-	newName := strings.ReplaceAll(oldName, ".", "_")
+	newName := invalidPromNameChar.ReplaceAllString(oldName, "_")
 	level.Debug(mm.logger).Log("msg", "normalized metric name", "old", oldName, "new", newName)
 	return newName
 }
