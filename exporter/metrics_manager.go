@@ -28,12 +28,6 @@ type MetricsManager struct {
 	logger    log.Logger
 }
 
-// up = prometheus.NewDesc(
-// 	prometheus.BuildFQName(namespace, "", "up"),
-// 	"Was the last query of Splunk successful.",
-// 	nil, nil,
-// )
-
 // Add adds a new metric to the metrics manager from a configuration
 func (mm *MetricsManager) Add(metric config.Metric) {
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
@@ -42,7 +36,7 @@ func (mm *MetricsManager) Add(metric config.Metric) {
 	mm.metrics[key] = Metric{
 		LabelsMap: labelsMap,
 		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName(mm.namespace, "", name),
+			prometheus.BuildFQName(mm.namespace, "metric", name),
 			fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
 			labelsPromNames, nil,
 		),

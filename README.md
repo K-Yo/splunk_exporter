@@ -26,7 +26,9 @@ docker compose up -d --build splunk_exporter
 
 ### from API
 
-### from searches
+### from Indexes
+
+They start with `splunk_exporter_metric_`
 
 app doing searches? store them in kvstore?
 

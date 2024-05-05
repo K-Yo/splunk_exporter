@@ -24,11 +24,6 @@ var (
 		"Was the last query of Splunk successful.",
 		nil, nil,
 	)
-	total_event_count = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "total_event_count"),
-		"total_event_count",
-		[]string{"data_name", "component", "log_level"}, nil,
-	)
 )
 
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
