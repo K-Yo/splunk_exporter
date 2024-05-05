@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
@@ -33,13 +34,13 @@ type MetricsManager struct {
 func (mm *MetricsManager) Add(metric config.Metric) {
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
 	name := mm.normalizeName(metric.Name)
-	labelsMap, labelsValues := mm.getLabels(metric)
+	labelsMap, labelsPromNames := mm.getLabels(metric)
 	mm.metrics[key] = Metric{
 		LabelsMap: labelsMap,
 		Desc: prometheus.NewDesc(
 			prometheus.BuildFQName(mm.namespace, "", name),
 			fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
-			labelsValues, nil,
+			labelsPromNames, nil,
 		),
 	}
 
@@ -53,8 +54,13 @@ func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 	processMetricCallback := func(measure splunk.MetricMeasure, descriptor *prometheus.Desc) error {
 
 		labelValues := make([]string, 0)
-		for _, v := range measure.Labels {
-			labelValues = append(labelValues, v)
+		labelKeys := make([]string, 0)
+		for k := range measure.Labels {
+			labelKeys = append(labelKeys, k)
+		}
+		slices.Sort(labelKeys)
+		for _, k := range labelKeys {
+			labelValues = append(labelValues, measure.Labels[k])
 		}
 		ch <- prometheus.MustNewConstMetric(
 			descriptor, prometheus.GaugeValue, measure.Value, labelValues...,
@@ -98,17 +104,21 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunk.Met
 
 // getLabels retrieves Labels (Prometheus terminology, called dimensions in Splunk) for given metric
 // it then creates a map to rename labels according to prometheus rules
+// it returns two items
+//   - a map whose keys are label names and values label values
+//   - a slice of label values (ordered after the map keys)
 func (mm *MetricsManager) getLabels(metric config.Metric) (map[string]string, []string) {
-	labels := mm.splunk.GetDimensions(metric.Index, metric.Name)
-	level.Debug(mm.logger).Log("msg", "Retrieved labels for metric", "index", metric.Index, "metricName", metric.Name, "labels", strings.Join(labels, ", "))
+	labelsSplunkNames := mm.splunk.GetDimensions(metric.Index, metric.Name)
+	level.Debug(mm.logger).Log("msg", "Retrieved labels for metric", "index", metric.Index, "metricName", metric.Name, "labels", strings.Join(labelsSplunkNames, ", "))
 	labelsMap := make(map[string]string)
-	labelsValues := make([]string, 0)
-	for _, l := range labels {
-		labelValue := strings.Replace(l, ".", "_", -1)
-		labelsMap[l] = labelValue
-		labelsValues = append(labelsValues, labelValue)
+	labelsPromNames := make([]string, 0)
+	slices.Sort(labelsSplunkNames)
+	for _, labelSplunkName := range labelsSplunkNames {
+		labelPromName := strings.Replace(labelSplunkName, ".", "_", -1)
+		labelsMap[labelSplunkName] = labelPromName
+		labelsPromNames = append(labelsPromNames, labelPromName)
 	}
-	return labelsMap, labelsValues
+	return labelsMap, labelsPromNames
 }
 
 // normalizeName will format a splunk metric name so it can be accepted by prometheus
