@@ -22,3 +22,16 @@ func TestParseMetricKey(t *testing.T) {
 	assert.Equal(t, "index", index)
 
 }
+
+func TestNormalizeName(t *testing.T) {
+	_, w, _ := os.Pipe()
+	logger := log.NewJSONLogger(w)
+	mm := MetricsManager{
+		logger: logger,
+	}
+
+	n := mm.normalizeName("abc_@dèj:k*l__")
+
+	assert.Equal(t, "abc__d_j_k_l__", n)
+
+}
