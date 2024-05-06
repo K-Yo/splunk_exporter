@@ -7,6 +7,7 @@ import (
 
 	"github.com/K-Yo/splunk_exporter/config"
 	"github.com/K-Yo/splunk_exporter/splunk"
+	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,6 +23,11 @@ var (
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "up"),
 		"Was the last query of Splunk successful.",
+		nil, nil,
+	)
+	indexer_throughput = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indexer", "throughput_bytes_per_seconds_average"),
+		"Average throughput processed by instance indexer, from server/introspection/indexer endpoint",
 		nil, nil,
 	)
 )
@@ -102,6 +108,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ok := e.collectConfiguredMetrics(ch)
 	ok = e.collectHealthMetrics(ch) && ok
+	ok = e.collectIndexerMetrics(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
 			up, prometheus.GaugeValue, 1.0,
@@ -123,4 +130,22 @@ func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 // collectHealthMetrics grabs metrics from Splunk Health endpoints
 func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
 	return e.hm.ProcessMeasures(ch)
+}
+
+func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
+	level.Info(e.logger).Log("msg", "Collecting Indexer measures")
+	introspectionIndexer := splunklib.ServerIntrospectionIndexer{}
+	if err := e.splunk.Client.Read(&introspectionIndexer); err != nil {
+		level.Error(e.logger).Log("msg", "failed to read indexer data", "err", err)
+		return false
+	}
+
+	throughput := introspectionIndexer.Content.AverageKBps / 1000
+
+	ch <- prometheus.MustNewConstMetric(
+		indexer_throughput, prometheus.GaugeValue, throughput,
+	)
+
+	level.Info(e.logger).Log("msg", "Done collecting Indexer measures")
+	return true
 }
