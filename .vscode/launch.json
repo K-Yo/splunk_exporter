@@ -10,7 +10,7 @@
             "request": "launch",
             "args": ["--log.level=debug"],
             "mode": "auto",
-            "program": "${fileDirname}"
+            "program": "${workspaceFolder}/main.go"
         }
     ]
 }
