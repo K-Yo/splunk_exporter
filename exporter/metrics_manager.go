@@ -30,6 +30,9 @@ type MetricsManager struct {
 
 // Add adds a new metric to the metrics manager from a configuration
 func (mm *MetricsManager) Add(metric config.Metric) {
+
+	level.Debug(mm.logger).Log("msg", "Adding descriptor", "namespace", "metrics", "name", metric.Name, "index", metric.Index)
+
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
 	name := mm.normalizeName(metric.Name)
 	labelsMap, labelsPromNames := mm.getLabels(metric)
@@ -145,6 +148,9 @@ func (mm *MetricsManager) parseMetricKey(key string) (metricName string, indexNa
 
 // newMetrics builds prom metrics for each of the settings configuration.
 func newMetricsManager(conf []config.Metric, namespace string, splunk *splunklib.Splunk, logger log.Logger) *MetricsManager {
+
+	level.Debug(logger).Log("msg", "Initiating metrics manager")
+
 	metricsMap := make(map[string]Metric)
 	mm := MetricsManager{
 		splunk:    splunk,
@@ -156,6 +162,8 @@ func newMetricsManager(conf []config.Metric, namespace string, splunk *splunklib
 	for _, m := range conf {
 		mm.Add(m)
 	}
+
+	level.Debug(logger).Log("msg", "Done initiating metrics manager")
 
 	return &mm
 }

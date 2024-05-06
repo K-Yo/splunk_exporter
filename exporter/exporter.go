@@ -31,6 +31,7 @@ type Exporter struct {
 	splunk  *splunk.Splunk
 	logger  log.Logger
 	metrics *MetricsManager
+	hm      *HealthManager
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
@@ -83,6 +84,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 		splunk:  &spk,
 		logger:  logger,
 		metrics: newMetricsManager(metricsConf, namespace, &spk, logger),
+		hm:      newHealthManager(namespace, &spk, logger),
 	}, nil
 }
 
@@ -99,7 +101,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ok := e.collectConfiguredMetrics(ch)
-	// ok = e.collectHealthStateMetric(ch) && ok
+	ok = e.collectHealthMetrics(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
 			up, prometheus.GaugeValue, 1.0,
@@ -116,4 +118,9 @@ func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 
 	return e.metrics.ProcessMeasures(ch)
 
+}
+
+// collectHealthMetrics grabs metrics from Splunk Health endpoints
+func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
+	return e.hm.ProcessMeasures(ch)
 }

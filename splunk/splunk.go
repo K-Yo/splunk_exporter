@@ -69,7 +69,11 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 				continue
 			}
 			delete(m, "metric_name")
-			level.Debug(logger).Log("msg", "processing metric", "metric_name", name)
+			dimensions := make([]string, 0, len(m))
+			for k := range m {
+				dimensions = append(dimensions, k)
+			}
+			level.Debug(logger).Log("msg", "processing metric", "metric_name", name, "dimensions", strings.Join(dimensions, ", "))
 			value, ok := m["value"]
 			if !ok {
 				level.Error(s.Logger).Log("msg", "could not find \"value\" in splunk results.")
