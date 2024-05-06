@@ -90,7 +90,9 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
-	ch <- total_event_count
+	for _, m := range e.metrics.metrics {
+		ch <- m.Desc
+	}
 }
 
 // Collect fetches the stats from configured Splunk and delivers them
