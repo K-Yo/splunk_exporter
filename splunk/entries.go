@@ -24,3 +24,9 @@ type ServerIntrospectionIndexer struct {
 	ID      client.ID                         `selective:"create" service:"server/introspection/indexer"`
 	Content ServerIntrospectionIndexerContent `json:"content"`
 }
+
+// DataIndex https://docs.splunk.com/Documentation/Splunk/9.2.1/RESTREF/RESTintrospect#data.2Findexes
+type DataIndex struct {
+	ID      client.ID              `selective:"create" service:"data/indexes"`
+	Content map[string]interface{} `json:"content"`
+}
