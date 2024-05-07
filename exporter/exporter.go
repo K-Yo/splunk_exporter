@@ -7,6 +7,7 @@ import (
 
 	"github.com/K-Yo/splunk_exporter/config"
 	"github.com/K-Yo/splunk_exporter/splunk"
+	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,14 +25,20 @@ var (
 		"Was the last query of Splunk successful.",
 		nil, nil,
 	)
+	indexer_throughput = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indexer", "throughput_bytes_per_seconds_average"),
+		"Average throughput processed by instance indexer, from server/introspection/indexer endpoint",
+		nil, nil,
+	)
 )
 
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
 type Exporter struct {
-	splunk  *splunk.Splunk
-	logger  log.Logger
-	metrics *MetricsManager
-	hm      *HealthManager
+	splunk         *splunk.Splunk
+	logger         log.Logger
+	indexedMetrics *MetricsManager
+	healthMetrics  *HealthManager
+	apiMetrics     map[string]*prometheus.Desc
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
@@ -81,10 +88,11 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
 
 	return &Exporter{
-		splunk:  &spk,
-		logger:  logger,
-		metrics: newMetricsManager(metricsConf, namespace, &spk, logger),
-		hm:      newHealthManager(namespace, &spk, logger),
+		splunk:         &spk,
+		logger:         logger,
+		indexedMetrics: newMetricsManager(metricsConf, namespace, &spk, logger),
+		healthMetrics:  newHealthManager(namespace, &spk, logger),
+		apiMetrics:     make(map[string]*prometheus.Desc),
 	}, nil
 }
 
@@ -92,8 +100,11 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
-	for _, m := range e.metrics.metrics {
+	for _, m := range e.indexedMetrics.metrics {
 		ch <- m.Desc
+	}
+	for _, m := range e.apiMetrics {
+		ch <- m
 	}
 }
 
@@ -102,6 +113,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ok := e.collectConfiguredMetrics(ch)
 	ok = e.collectHealthMetrics(ch) && ok
+	ok = e.collectIndexerMetrics(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
 			up, prometheus.GaugeValue, 1.0,
@@ -116,11 +128,101 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 // collectConfiguredMetrics gets metric measures from splunk indexes as specified by configuration
 func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 
-	return e.metrics.ProcessMeasures(ch)
+	return e.indexedMetrics.ProcessMeasures(ch)
 
 }
 
 // collectHealthMetrics grabs metrics from Splunk Health endpoints
 func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
-	return e.hm.ProcessMeasures(ch)
+	return e.healthMetrics.ProcessMeasures(ch)
+}
+
+func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
+	ret := true
+	level.Info(e.logger).Log("msg", "Collecting Indexer measures")
+	introspectionIndexer := splunklib.ServerIntrospectionIndexer{}
+	if err := e.splunk.Client.Read(&introspectionIndexer); err != nil {
+		level.Error(e.logger).Log("msg", "failed to read indexer data", "err", err)
+		ret = false
+	}
+
+	throughput := introspectionIndexer.Content.AverageKBps / 1000
+
+	ch <- prometheus.MustNewConstMetric(
+		indexer_throughput, prometheus.GaugeValue, throughput,
+	)
+
+	indexes := make([]splunklib.DataIndex, 0)
+	if err := e.splunk.Client.List(&indexes); err != nil {
+		level.Error(e.logger).Log("msg", "failed to list indexes", "err", err)
+		ret = false
+	}
+	for _, i := range indexes {
+		level.Debug(e.logger).Log("msg", "processing index", "index", i.ID.Title)
+		ret = ret && e.measureIndex(ch, &i)
+	}
+
+	level.Info(e.logger).Log("msg", "Done collecting Indexer measures")
+	return ret
+}
+
+// measureIndex returns measurements for one index, creating desc if they do not exist yet
+func (e *Exporter) measureIndex(ch chan<- prometheus.Metric, index *splunklib.DataIndex) bool {
+	ret := true
+	indexName := index.ID.Title
+	for typ, ival := range index.Content {
+		var val float64
+
+		// FIXME add minDate and maxDate as titmestamps
+
+		switch v := ival.(type) {
+		case int:
+			val = float64(v)
+		case float64:
+			val = v
+		default:
+			continue
+		}
+
+		name := e.normalizeName(typ)
+		help := fmt.Sprintf("Index %s from Splunk data/indexes API", typ)
+		e.CreateIfNeededThenMeasure(ch, "index", name, help, val, []string{"index_name"}, []string{indexName})
+	}
+	return ret
+}
+
+// normalizeName will format a string so it can be accepted by prometheus as a metric name or label
+// see https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+func (e *Exporter) normalizeName(oldName string) string {
+	newName := invalidPromNameChar.ReplaceAllString(oldName, "_")
+	level.Debug(e.logger).Log("msg", "normalized name", "old", oldName, "new", newName)
+	return newName
+}
+
+// CreateIfNeededThenMeasure Measures a metric, and creates it if it does not exist yet in local registry
+func (e *Exporter) CreateIfNeededThenMeasure(
+	ch chan<- prometheus.Metric,
+	subsystem string,
+	name string,
+	help string,
+	value float64,
+	labels []string,
+	labelValues []string) {
+
+	metricFQName := prometheus.BuildFQName(namespace, subsystem, name)
+	descriptor, exists := e.apiMetrics[metricFQName]
+	if !exists {
+		descriptor = prometheus.NewDesc(
+			metricFQName,
+			help,
+			labels,
+			nil,
+		)
+		e.apiMetrics[metricFQName] = descriptor
+	}
+
+	// measure
+	ch <- prometheus.MustNewConstMetric(
+		descriptor, prometheus.GaugeValue, value, labelValues...,
+	)
 }
