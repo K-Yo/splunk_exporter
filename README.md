@@ -26,9 +26,11 @@ docker compose up -d --build splunk_exporter
 
 ### from API
 
-### from Indexes
-
-They start with `splunk_exporter_metric_`
+| Prefix                                                 | Description                                       |
+| ------------------------------------------------------ | ------------------------------------------------- |
+| `splunk_exporter_index_`                               | Numerical data coming from data/indexes endpoint. |
+| `splunk_exporter_indexer_throughput_bytes_per_seconds` | average data throughput in indexer                |
+| `splunk_exporter_metric_`                              | Export from metric indexes                        |
 
 app doing searches? store them in kvstore?
 
