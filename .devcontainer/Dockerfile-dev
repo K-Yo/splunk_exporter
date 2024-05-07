@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.21 
+
+ARG SRC=.
+
+WORKDIR /app
+
+COPY ${SRC} ./
+RUN go mod download
+
+RUN GOOS=linux go build -o /splunk_exporter
+
+EXPOSE 9115
+
+CMD [ "/splunk_exporter" ]
