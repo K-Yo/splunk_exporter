@@ -1,0 +1,19 @@
+# Splunk API endpoint
+url: https://localhost:8089
+
+# Splunk API key
+token: '<insert api key>'
+
+# should we skip TLS validation ?
+insecure: false
+
+# Which indexed metrics do you wish to export ?
+metrics:
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_event_count
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_bucket_count
+  - index: _metrics
+    name: spl.mlog.searchscheduler.max_lag
+  - index: _metrics
+    name: spl.mlog.searchscheduler.skipped

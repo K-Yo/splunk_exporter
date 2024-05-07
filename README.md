@@ -1,6 +1,16 @@
 # splunk_exporter
 
-## Run
+[![Go Report Card](https://goreportcard.com/badge/github.com/K-Yo/splunk_exporter)](https://goreportcard.com/report/github.com/K-Yo/splunk_exporter)
+
+## Howto
+
+You will need a configuration file, follow [`splunk_exporter_example.yml`](./splunk_exporter_example.yml) format.
+
+```
+./splunk_exporter --help
+```
+
+## Example run
 
 You need docker compose installed, a bash helper is provided to start the exporter and the whole test bench as a [docker compose environment](./deploy/README.md).
 
