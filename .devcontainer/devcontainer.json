@@ -3,7 +3,8 @@
 {
 	"name": "Splunk Exporter",
 	"dockerComposeFile": [
-		"../deploy/docker-compose.yml"
+		"../deploy/docker-compose.yml",
+		"./docker-compose-override.yml"
 	],
 
 	"service": "splunk_exporter"
