@@ -6,7 +6,11 @@
 		"./docker-compose-dev.yml"
 	],
 	"service": "splunk_exporter",
-	"runServices": ["grafana", "prometheus", "splunk"],
+	"runServices": [
+		"grafana",
+		"prometheus",
+		"splunk"
+	],
 	"workspaceFolder": "/app",
 	"customizations": {
 		"vscode": {
@@ -16,11 +20,17 @@
 				"golang.Go"
 			]
 		}
-	}
+	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [
+		9115,
+		"prometheus:9090",
+		"grafana:3000",
+		"splunk:8000",
+		"splunk:8089"
+	]
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "go version",
 	// Configure tool-specific properties.

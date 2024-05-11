@@ -17,6 +17,9 @@ RUN groupadd --gid $USER_GID $USERNAME \
     # && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     # && chmod 0440 /etc/sudoers.d/$USERNAME
 
+# Go tooling
+RUN go install -v golang.org/x/tools/gopls@latest
+
 # Get all sources for development
 WORKDIR /tmp/app
 COPY ${SRC}/go.mod ${SRC}/go.mod ./
