@@ -32,6 +32,10 @@ After doing some changes, possible to re-deploy splunk_exporter with the followi
 docker compose up -d --build splunk_exporter
 ```
 
+### Devcontainers
+
+- [Commit from devcontainers](https://code.visualstudio.com/remote/advancedcontainers/sharing-git-credentials)
+
 ## metrics
 
 All metrics are **Gauge**.
