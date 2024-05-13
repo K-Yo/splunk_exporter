@@ -53,7 +53,7 @@ services:
       - monitoring
     volumes:
       - ./splunk_exporter.yml:/splunk_exporter.yml:ro
-    command: /splunk_exporter --config.file /splunk_exporter.yml
+    command: /splunk_exporter --config.file /splunk_exporter.yml --log.level=debug
     # add /etc/ssl/certs/ca-certificates.crt if needed
   
   splunk:
