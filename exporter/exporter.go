@@ -3,6 +3,7 @@ package exporter
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
@@ -175,6 +176,7 @@ func (e *Exporter) measureIndex(ch chan<- prometheus.Metric, index *splunklib.Da
 	indexName := index.ID.Title
 	for typ, ival := range index.Content {
 		var val float64
+		var err error
 
 		// FIXME add minDate and maxDate as titmestamps
 
@@ -183,6 +185,11 @@ func (e *Exporter) measureIndex(ch chan<- prometheus.Metric, index *splunklib.Da
 			val = float64(v)
 		case float64:
 			val = v
+		case string:
+			val, err = strconv.ParseFloat(v, 64)
+			if err != nil {
+				continue
+			}
 		default:
 			continue
 		}
