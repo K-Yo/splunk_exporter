@@ -85,13 +85,16 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 		Logger: logger,
 	}
 
+	metricsManager := newMetricsManager(metricsConf, namespace, &spk, logger)
+	healthManager := newHealthManager(namespace, &spk, logger)
+
 	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
 
 	return &Exporter{
 		splunk:         &spk,
 		logger:         logger,
-		indexedMetrics: newMetricsManager(metricsConf, namespace, &spk, logger),
-		healthMetrics:  newHealthManager(namespace, &spk, logger),
+		indexedMetrics: metricsManager,
+		healthMetrics:  healthManager,
 		apiMetrics:     make(map[string]*prometheus.Desc),
 	}, nil
 }
