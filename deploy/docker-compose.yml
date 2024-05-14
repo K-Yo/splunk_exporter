@@ -7,7 +7,7 @@ volumes:
 
 services:
   grafana:
-    image: grafana/grafana-oss
+    image: grafana/grafana-oss:10.4.3
     container_name: grafana
     restart: unless-stopped
     volumes:
@@ -20,7 +20,7 @@ services:
       - monitoring
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.52.0
     container_name: prometheus
     restart: unless-stopped
     volumes:
@@ -44,7 +44,6 @@ services:
     container_name: splunk_exporter
     build:
       context: ..
-    image: splunk_exporter:latest
     ports:
       - 9115:9115
     expose:
@@ -57,7 +56,7 @@ services:
     # add /etc/ssl/certs/ca-certificates.crt if needed
   
   splunk:
-    image: splunk/splunk:latest
+    image: splunk/splunk:9.2
     restart: unless-stopped
     container_name: splunk
     environment:
