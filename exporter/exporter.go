@@ -102,13 +102,8 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 // Describe describes all the metrics ever exported by the Splunk exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	ch <- up
-	for _, m := range e.indexedMetrics.metrics {
-		ch <- m.Desc
-	}
-	for _, m := range e.apiMetrics {
-		ch <- m
-	}
+	// Nothing is returned, this is an unchecked exporter.
+	// Some Desc are created on the fly, they depend on what Splunk API will return (depends on splunk configuration/version, for example health checks)
 }
 
 // Collect fetches the stats from configured Splunk and delivers them
