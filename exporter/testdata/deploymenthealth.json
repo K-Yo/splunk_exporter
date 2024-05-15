@@ -1,0 +1,746 @@
+{
+    "name": "deployment",
+    "id": "https://splunk.local/services/server/health/deployment",
+    "updated": "1970-01-01T01:00:00+01:00",
+    "links": {
+        "alternate": "/services/server/health/deployment",
+        "list": "/services/server/health/deployment",
+        "details": "/services/server/health/deployment/details"
+    },
+    "author": "system",
+    "acl": {
+        "app": "",
+        "can_list": true,
+        "can_write": true,
+        "modifiable": false,
+        "owner": "system",
+        "perms": {
+            "read": [
+                "admin",
+                "soc_api",
+                "splunk-system-role"
+            ],
+            "write": []
+        },
+        "removable": false,
+        "sharing": "system"
+    },
+    "content": {
+        "disabled": false,
+        "eai:acl": null,
+        "features": {
+            "health": "red",
+            "num_red": 3,
+            "num_yellow": 1,
+            "splunkd": {
+                "data_forwarding": {
+                    "health": "green",
+                    "ingest_actions_output_s3": {
+                        "display_name": "Ingest Actions Output S3",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "output_rate": {
+                            "description": "This indicator reflects the number of consecutive times the rfsoutput processor was unable to insert data into Splunk's processing queue. By default, this indicator becomes Yellow after consecutive insertion failures for 5 seconds, and Red after 10 seconds. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "output_rate",
+                            "path": "splunkd.data_forwarding.ingest_actions_output_s3.output_rate"
+                        },
+                        "write_failure": {
+                            "description": "The indicator reflects the number of consecutive times the rfsoutput worker was unable to write data into external destinations. By default, this indicator becomes Yellow after 2 consecutive write failures, Red after 10 consecutive failures. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "write_failure",
+                            "path": "splunkd.data_forwarding.ingest_actions_output_s3.write_failure"
+                        }
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0,
+                    "splunk-2-splunk_forwarding": {
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "tcpoutautolb-0": {
+                            "display_name": "Tcpoutautolb-0",
+                            "distributed_disabled": "0",
+                            "health": "green",
+                            "num_red": 0,
+                            "num_yellow": 0,
+                            "s2s_connections": {
+                                "description": "This indicator gauges whether this forwarder can successfully connect to all indexers configured in outputs.conf. By default, this indicator becomes Yellow when 20% of indexers are unreachable, and Red at 70%.",
+                                "health": "green",
+                                "name": "s2s_connections",
+                                "path": "splunkd.data_forwarding.splunk-2-splunk_forwarding.tcpoutautolb-0.s2s_connections"
+                            }
+                        },
+                        "tcpoutautolb-1": {
+                            "display_name": "Tcpoutautolb-1",
+                            "distributed_disabled": "0",
+                            "health": "green",
+                            "num_red": 0,
+                            "num_yellow": 0,
+                            "s2s_connections": {
+                                "description": "This indicator gauges whether this forwarder can successfully connect to all indexers configured in outputs.conf. By default, this indicator becomes Yellow when 20% of indexers are unreachable, and Red at 70%.",
+                                "health": "green",
+                                "name": "s2s_connections",
+                                "path": "splunkd.data_forwarding.splunk-2-splunk_forwarding.tcpoutautolb-1.s2s_connections"
+                            }
+                        }
+                    }
+                },
+                "dynamic_data_archive": {
+                    "failed_archive_buckets": {
+                        "archived_buckets_failed_last_24h": {
+                            "description": "This indicator tracks the amount of buckets that were attempted to be archived into Glacier but failed. Green occurs when less than 40 buckets in the last 24 hours have failed, yellow occurs when 3 or more buckets have failed, and red occurs when 80 or more buckets have failed.",
+                            "health": "green",
+                            "name": "archived_buckets_failed_last_24h",
+                            "path": "splunkd.dynamic_data_archive.failed_archive_buckets.archived_buckets_failed_last_24h"
+                        },
+                        "display_name": "Failed Archive Buckets",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "health": "green",
+                    "num_red": 0,
+                    "num_yellow": 0
+                },
+                "file_monitor_input": {
+                    "forwarder_ingestion_latency": {
+                        "display_name": "Forwarder Ingestion Latency",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "ingestion_latency_indexer_health": {
+                            "description": "This indicator tracks aggregated health of ingestion latencies as reported by forwarders. Thresholds are in percents, once 100*(number of forwarders reporting yellow + red colors)/(total number of forwarders) exceeds yellow threshold the indexer will report aggregated color as yellow color. Once 100*(number of forwarders reporting red colors)/(total number of forwarders) exceeds red threshold the indexer will report aggregated color as red color.",
+                            "health": "green",
+                            "name": "ingestion_latency_indexer_health",
+                            "path": "splunkd.file_monitor_input.forwarder_ingestion_latency.ingestion_latency_indexer_health"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "health": "green",
+                    "ingestion_latency": {
+                        "display_name": "Ingestion Latency",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "ingestion_latency_gap_multiplier": {
+                            "description": "This indicator tracks locally generated events, and uses the time elapsed since the last event was ingested to determine the ingestion latency gap. By default, this indicator will turn Yellow when the latency gap reaches 45 seconds, and Red at 210 seconds. To calculate the warning value, multiple these values by their corresponding ingestion_latency_lag_sec and then add 30. Setting both values to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "ingestion_latency_gap_multiplier",
+                            "path": "splunkd.file_monitor_input.ingestion_latency.ingestion_latency_gap_multiplier"
+                        },
+                        "ingestion_latency_lag_sec": {
+                            "description": "This indicator tracks the difference between the logging time and processing time of locally generated events to determine ingestion latency. By default, this indicator will turn Yellow at 15 seconds of latency, and Red if the latency reaches 180 seconds. Setting both values to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "ingestion_latency_lag_sec",
+                            "path": "splunkd.file_monitor_input.ingestion_latency.ingestion_latency_lag_sec"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "large_and_archive_file_reader-0": {
+                        "data_out_rate": {
+                            "description": "This indicator reflects the number of consecutive times the Batch File Reader was unable to insert data into Splunk's processing queues for a period of 5 seconds. Each failed insertion attempt blocks the input processor for 5 seconds. By default, this indicator becomes Yellow when the insertion attempt fails once, Red after 2 consecutive failures.",
+                            "health": "green",
+                            "name": "data_out_rate",
+                            "path": "splunkd.file_monitor_input.large_and_archive_file_reader-0.data_out_rate"
+                        },
+                        "display_name": "Large And Archive File Reader-0",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "large_and_archive_file_reader-1": {
+                        "data_out_rate": {
+                            "description": "This indicator reflects the number of consecutive times the Batch File Reader was unable to insert data into Splunk's processing queues for a period of 5 seconds. Each failed insertion attempt blocks the input processor for 5 seconds. By default, this indicator becomes Yellow when the insertion attempt fails once, Red after 2 consecutive failures.",
+                            "health": "green",
+                            "name": "data_out_rate",
+                            "path": "splunkd.file_monitor_input.large_and_archive_file_reader-1.data_out_rate"
+                        },
+                        "display_name": "Large And Archive File Reader-1",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0,
+                    "real-time_reader-0": {
+                        "data_out_rate": {
+                            "description": "This indicator reflects the number of consecutive times the Tail File Reader was unable to insert data into Splunk's processing queues for a period of 5 seconds. By default, this indicator becomes Yellow when this input stalls for 5 seconds, and Red after 10 seconds.",
+                            "health": "green",
+                            "name": "data_out_rate",
+                            "path": "splunkd.file_monitor_input.real-time_reader-0.data_out_rate"
+                        },
+                        "display_name": "Real-time Reader-0",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "real-time_reader-1": {
+                        "data_out_rate": {
+                            "description": "This indicator reflects the number of consecutive times the Tail File Reader was unable to insert data into Splunk's processing queues for a period of 5 seconds. By default, this indicator becomes Yellow when this input stalls for 5 seconds, and Red after 10 seconds.",
+                            "health": "green",
+                            "name": "data_out_rate",
+                            "path": "splunkd.file_monitor_input.real-time_reader-1.data_out_rate"
+                        },
+                        "display_name": "Real-time Reader-1",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    }
+                },
+                "health": "red",
+                "index_processor": {
+                    "buckets": {
+                        "buckets_created_last_60m": {
+                            "description": "This indicator gauges whether incoming data is being appropriately bucketed within the Splunk index. By default, Red occurs when any index has created more than 60 buckets within the last hour. A high rate of bucket creation can cause severe search performance degradation, and might indicate poorly configured data processing (for example, timestamping).",
+                            "health": "green",
+                            "name": "buckets_created_last_60m",
+                            "path": "splunkd.index_processor.buckets.buckets_created_last_60m"
+                        },
+                        "count_bucket_rename_failure_last_10mins": {
+                            "description": "This indicator tracks whether the number of failures of bucket renames during hot bucket rolling is greater than the threshold. By default, Yellow occurs when there are 2 failures, and Red when there are 5 failures. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "count_bucket_rename_failure_last_10mins",
+                            "path": "splunkd.index_processor.buckets.count_bucket_rename_failure_last_10mins"
+                        },
+                        "display_name": "Buckets",
+                        "distributed_disabled": "0",
+                        "gigantic_bucket_size": {
+                            "description": "This indicator tracks the buckets with sizes that exceeds the configured threshold in megabytes. A large bucket can cause high memory usage and performance degradation. By default, Yellow occurs when there are one or more buckets exceeding 20,000 MB, and Red when there are one or more buckets exceeding 50,000 MB. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "gigantic_bucket_size",
+                            "path": "splunkd.index_processor.buckets.gigantic_bucket_size"
+                        },
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "percent_small_buckets_created_last_24h": {
+                            "description": "This indicator tracks the percentage of small buckets created over the last 24 hours. A small bucket is defined as less than 10 % of the ‘maxDataSize’ setting in indexes.conf.",
+                            "health": "green",
+                            "name": "percent_small_buckets_created_last_24h",
+                            "path": "splunkd.index_processor.buckets.percent_small_buckets_created_last_24h"
+                        }
+                    },
+                    "disk_space": {
+                        "disk_space_remaining_multiple_minfreespace": {
+                            "description": "This indicator tracks whether all Splunk index filesystems contain sufficient free space to continue indexing. This calculation is based upon the 'minFreeSpace' setting in server.conf. By default, Yellow occurs when a filesystem's free space falls below (2* 'minFreeSpace'), and Red occurs when it falls below 'minFreeSpace'. If the index being reported on is a remote s2-enabled index, by default, Yellow occurs when a filesystem's free space falls below (1 * 'minFreeSpace'), and Red occurs when a filesystem's free space drops to 0.",
+                            "health": "green",
+                            "name": "disk_space_remaining_multiple_minfreespace",
+                            "path": "splunkd.index_processor.disk_space.disk_space_remaining_multiple_minfreespace"
+                        },
+                        "display_name": "Disk Space",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "max_volume_size_invalid": {
+                            "description": "The indicator tracks volumes with remote storage that use the maxVolumeDataSizeMB setting. The use of maxVolumeDataSizeMB will be ignored in these remote storage volumes. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "max_volume_size_invalid",
+                            "path": "splunkd.index_processor.disk_space.max_volume_size_invalid"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "health": "green",
+                    "index_optimization": {
+                        "concurrent_optimize_processes_percent": {
+                            "description": "This indicator tracks whether index optimization is falling behind.  By default, this indicator becomes Yellow when 100% of the maximum allowed \"splunk-optimize\" processes are running.",
+                            "health": "green",
+                            "name": "concurrent_optimize_processes_percent",
+                            "path": "splunkd.index_processor.index_optimization.concurrent_optimize_processes_percent"
+                        },
+                        "display_name": "Index Optimization",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0,
+                    "smart_storage": {
+                        "display_name": "Smart Storage",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "smart_storage_localize_on_time": {
+                            "description": "This indicator tracks whether the S2 buckets are localized in a timely manner. By default, Yellow occurs when the number of timeout for the bucket localization is 10. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "smart_storage_localize_on_time",
+                            "path": "splunkd.index_processor.smart_storage.smart_storage_localize_on_time"
+                        }
+                    }
+                },
+                "indexer_clustering": {
+                    "cluster_bundles": {
+                        "cluster_bundles": {
+                            "description": "This indicator reflects whether there were validation errors in the last bundle that was pushed to cluster peers. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "cluster_bundles",
+                            "path": "splunkd.indexer_clustering.cluster_bundles.cluster_bundles"
+                        },
+                        "count_classic_bundle_timeout_last_10mins": {
+                            "description": "This indicator counts the number of times that the classic bundle replication lasts longer than 10 seconds in a 10 minute window. By default, Yellow occurs when the number of replication longer than 10 seconds is 2, and red when the number is 5, within the last 10 minues. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "count_classic_bundle_timeout_last_10mins",
+                            "path": "splunkd.indexer_clustering.cluster_bundles.count_classic_bundle_timeout_last_10mins"
+                        },
+                        "count_full_bundle_untar_last_10mins": {
+                            "description": "This indicator counts the number of failures when decompressing the replicated full bundles in the last 10 minutes. By default, Yellow occurs when there are 2 failures, and red when there are 5 failures, within the last 10 minutes. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "count_full_bundle_untar_last_10mins",
+                            "path": "splunkd.indexer_clustering.cluster_bundles.count_full_bundle_untar_last_10mins"
+                        },
+                        "display_name": "Cluster Bundles",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "data_durability": {
+                        "cluster_replication_factor": {
+                            "description": "This indicator reflects whether or not the configured replication factor is met for an indexer cluster. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "cluster_replication_factor",
+                            "path": "splunkd.indexer_clustering.data_durability.cluster_replication_factor"
+                        },
+                        "cluster_search_factor": {
+                            "description": "This indicator reflects whether or not the configured search factor is met for an indexer cluster. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "cluster_search_factor",
+                            "path": "splunkd.indexer_clustering.data_durability.cluster_search_factor"
+                        },
+                        "display_name": "Data Durability",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "data_searchable": {
+                        "data_searchable": {
+                            "description": "This indicator reflects whether ALL indexed data in a cluster is available to be searched. Red occurs when one or more buckets of data lack a primary (searchable) copy. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "data_searchable",
+                            "path": "splunkd.indexer_clustering.data_searchable.data_searchable"
+                        },
+                        "display_name": "Data Searchable",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "health": "green",
+                    "indexers": {
+                        "cm_service_interval_invalid": {
+                            "description": "This indicator checks whether the Cluster Manager's service_interval setting is configured to an unhealthy value that could cause disruption to the Indexer Cluster. By default, Yellow occurs when the interval is configured to more than 60 seconds. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "cm_service_interval_invalid",
+                            "path": "splunkd.indexer_clustering.indexers.cm_service_interval_invalid"
+                        },
+                        "detention": {
+                            "description": "This indicator tracks whether any indexer cluster peers are in detention mode. Yellow occurs when not less than 'indicator:detention:yellow' number of peers are in manual detention, Red when not less than 'indicator:detention:red' number of peers are in automatic detention. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "detention",
+                            "path": "splunkd.indexer_clustering.indexers.detention"
+                        },
+                        "display_name": "Indexers",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "missing_peers": {
+                            "description": "This indicator tracks whether any indexer cluster peers are in transition. Yellow occurs when not less than 'indicator:missing_peers:yellow' number of peers are in status like: stopping, stopped, decommissioning, pending or restarting, Red when not less than 'indicator:missing_peers:red' number of peers are down. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "missing_peers",
+                            "path": "splunkd.indexer_clustering.indexers.missing_peers"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "indexing_ready": {
+                        "display_name": "Indexing Ready",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "indexing_ready": {
+                            "description": "This indicator becomes Green when indexer clustering becomes functional. This happens when enough peers join the cluster. Once Green, this indicator stays Green until the cluster manager is restarted. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "indexing_ready",
+                            "path": "splunkd.indexer_clustering.indexing_ready.indexing_ready"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0,
+                    "peer_connectivity": {
+                        "display_name": "Peer Connectivity",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "peer_connectivity": {
+                            "description": "This indicator reflects whether cluster peers can successfully connect to the cluster manager. If you are logged into a cluster peer, the indicator only reflects the status of the logged-in peer. Any failure results in Red. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "peer_connectivity",
+                            "path": "splunkd.indexer_clustering.peer_connectivity.peer_connectivity"
+                        }
+                    },
+                    "peer_state": {
+                        "display_name": "Peer State",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "peer_state": {
+                            "description": "This indicator gauges whether the cluster peer is in an abnormal state. For example, manual detention will result in Yellow, and automatic detention will result in Red. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "peer_state",
+                            "path": "splunkd.indexer_clustering.peer_state.peer_state"
+                        }
+                    },
+                    "peer_version": {
+                        "display_name": "Peer Version",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "peer_version": {
+                            "description": "This indicator checks version compatibility between the cluster manager and cluster peer. Red occurs when the cluster manager version is older than the cluster peer version.",
+                            "health": "green",
+                            "name": "peer_version",
+                            "path": "splunkd.indexer_clustering.peer_version.peer_version"
+                        }
+                    },
+                    "remote_storage_configuration": {
+                        "display_name": "Remote Storage Configuration",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "s2_sf_rf": {
+                            "description": "This indicator tracks whether the search factor is equal to the replication factor when remote indexes exist. Yellow occurs when there are remote indexes that have search factor less than replication factor. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "s2_sf_rf",
+                            "path": "splunkd.indexer_clustering.remote_storage_configuration.s2_sf_rf"
+                        }
+                    },
+                    "replication_failures": {
+                        "display_name": "Replication Failures",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "replication_failures": {
+                            "description": "This indicator tracks whether the cluster peer is encountering repeated bucket replication failures. Yellow occurs after 5 consecutive failures, Red after 10.",
+                            "health": "green",
+                            "name": "replication_failures",
+                            "path": "splunkd.indexer_clustering.replication_failures.replication_failures"
+                        }
+                    },
+                    "search_head_connectivity": {
+                        "display_name": "Search Head Connectivity",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "master_connectivity": {
+                            "description": "This indicator reflects whether or not this search head can successfully connect to the manager node. When Red, searches might be inaccurate due to outdated cluster information. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "master_connectivity",
+                            "path": "splunkd.indexer_clustering.search_head_connectivity.master_connectivity"
+                        },
+                        "master_version_compatibility": {
+                            "description": "This indicator checks version compatibility between the manager node and search head. Yellow occurs when the manager node version is older than the search head version. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "master_version_compatibility",
+                            "path": "splunkd.indexer_clustering.search_head_connectivity.master_version_compatibility"
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "searchhead_peer_connectivity": {
+                            "description": "This indicator reflects whether or not there are search peers losing connection to search head. Yellow occurs when there are search peers lost connection to search head. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "searchhead_peer_connectivity",
+                            "path": "splunkd.indexer_clustering.search_head_connectivity.searchhead_peer_connectivity"
+                        }
+                    }
+                },
+                "num_red": 3,
+                "num_yellow": 1,
+                "resource_usage": {
+                    "health": "green",
+                    "iowait": {
+                        "avg_cpu__max_perc_last_3m": {
+                            "description": "This indicator tracks the average IOWait percentage across all CPUs on the machine running the Splunk Enterprise instance, over the last 3 minute window. By default, this indicator will turn Yellow if the percentage exceeds 1% and Red if it exceeds 3% during this window.",
+                            "health": "green",
+                            "name": "avg_cpu__max_perc_last_3m",
+                            "path": "splunkd.resource_usage.iowait.avg_cpu__max_perc_last_3m"
+                        },
+                        "display_name": "Iowait",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "single_cpu__max_perc_last_3m": {
+                            "description": "This indicator tracks the IOWait percentage for the single most bottle-necked CPU on the machine running the Splunk Enterprise instance, over the last 3 minute window. By default, this indicator will turn Yellow if the percentage exceeds 5% and Red if it exceeds 10% during this window.",
+                            "health": "green",
+                            "name": "single_cpu__max_perc_last_3m",
+                            "path": "splunkd.resource_usage.iowait.single_cpu__max_perc_last_3m"
+                        },
+                        "sum_top3_cpu_percs__max_last_3m": {
+                            "description": "This indicator tracks the sum of IOWait percentage for the three most bottle-necked CPUs on the machine running the Splunk Enterprise instance, over the last 3 minute window. By default, this indicator will turn Yellow if the sum exceeds 7 and Red if it exceeds 15 during this window.",
+                            "health": "green",
+                            "name": "sum_top3_cpu_percs__max_last_3m",
+                            "path": "splunkd.resource_usage.iowait.sum_top3_cpu_percs__max_last_3m"
+                        }
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0
+                },
+                "search_head_clustering": {
+                    "health": "green",
+                    "member_to_captain_connection": {
+                        "captain_bundle_replication": {
+                            "description": "This indicator checks whether there are bundle replication failures which could potentially cause slowness in the Search Head.",
+                            "health": "green",
+                            "name": "captain_bundle_replication",
+                            "path": "splunkd.search_head_clustering.member_to_captain_connection.captain_bundle_replication"
+                        },
+                        "captain_connection": {
+                            "description": "This indicator checks whether a search head cluster member is able to communicate with the captain or not. Red occurs when a member cannot communicate with the captain, green otherwise.",
+                            "health": "green",
+                            "name": "captain_connection",
+                            "path": "splunkd.search_head_clustering.member_to_captain_connection.captain_connection"
+                        },
+                        "captain_existence": {
+                            "description": "This indicator checks for the existence of a valid captain in the search head cluster. Red occurs when there is no valid captain in the SHC, green otherwise.",
+                            "health": "green",
+                            "name": "captain_existence",
+                            "path": "splunkd.search_head_clustering.member_to_captain_connection.captain_existence"
+                        },
+                        "display_name": "Member To Captain Connection",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "num_red": 0,
+                    "num_yellow": 0,
+                    "shc_captain": {
+                        "captain_common_baseline": {
+                            "common_baseline": {
+                                "description": "This indicator checks whether the captain shares a common baseline with all the search head cluster members or not. This indicator is red if a shared baseline is missing between the captain and any of the members, green otherwise.",
+                                "health": "green",
+                                "name": "common_baseline",
+                                "path": "splunkd.search_head_clustering.shc_captain.captain_common_baseline.common_baseline"
+                            },
+                            "display_name": "Captain Common Baseline",
+                            "distributed_disabled": "0",
+                            "health": "green",
+                            "num_red": 0,
+                            "num_yellow": 0
+                        },
+                        "captain_election_overview": {
+                            "display_name": "Captain Election Overview",
+                            "distributed_disabled": "0",
+                            "dynamic_captain_quorum": {
+                                "description": "This indicator tracks whether quorum majority required to re-elect a dynamic captain has been lost. Yellow occurs when half or more members are down, Green otherwise. This feature can be disabled when a static captain is being used instead of a dynamic captain. However, we recommend keeping the feature enabled if static captain is being used only for disaster recovery.",
+                                "health": "green",
+                                "name": "dynamic_captain_quorum",
+                                "path": "splunkd.search_head_clustering.shc_captain.captain_election_overview.dynamic_captain_quorum"
+                            },
+                            "health": "green",
+                            "num_red": 0,
+                            "num_yellow": 0
+                        },
+                        "health": "green",
+                        "members_overview": {
+                            "detention": {
+                                "description": "This indicator tracks whether any search head cluster members are in detention mode. Yellow occurs when not less than 'indicator:detention:yellow' number of members are in manual detention, Red when not less than 'indicator:detention:red' number of members are in automatic detention. Green occurs when no members are in manual/automatic detention.",
+                                "health": "green",
+                                "name": "detention",
+                                "path": "splunkd.search_head_clustering.shc_captain.members_overview.detention"
+                            },
+                            "display_name": "Members Overview",
+                            "distributed_disabled": "0",
+                            "health": "green",
+                            "num_red": 0,
+                            "num_yellow": 0,
+                            "replication_factor": {
+                                "description": "This indicator tracks whether enough search head cluster members exist to honor the configured search artifact replication factor. You can disable this indicator by setting the threshold to 0.",
+                                "health": "green",
+                                "name": "replication_factor",
+                                "path": "splunkd.search_head_clustering.shc_captain.members_overview.replication_factor"
+                            },
+                            "status": {
+                                "description": "This indicator tracks whether the required number of search head cluster members are up and running. Green occurs when all members are up, Yellow when 'indicator:status:yellow' members are down for less than (2* heartbeat_timeout) amount of time, and Red if 'indicator:status:red' members are down for more than (2*heartbeat_timeout) amount of time.",
+                                "health": "green",
+                                "name": "status",
+                                "path": "splunkd.search_head_clustering.shc_captain.members_overview.status"
+                            }
+                        },
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "snapshot_creation": {
+                        "display_name": "Snapshot Creation",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "snapshot_creation": {
+                            "description": "This indicator checks whether snapshots were created on each search head cluster member within a reasonable time. This indicator is green if snapshot creation happens in less than (indicator:snapshot_creation:yellow x conf_replication_summary.period) minutes, yellow if snapshot creation takes between (indicator:snapshot_creation:yellow * conf_replication_summary.period) and (indicator:snapshot_creation:red * conf_replication_summary.period) minutes, and red if it takes more than (indicator:snapshot_creation:red * conf_replication_summary.period) minutes.",
+                            "health": "green",
+                            "name": "snapshot_creation",
+                            "path": "splunkd.search_head_clustering.snapshot_creation.snapshot_creation"
+                        }
+                    }
+                },
+                "search_scheduler": {
+                    "health": "red",
+                    "num_red": 3,
+                    "num_yellow": 1,
+                    "scheduler_suppression": {
+                        "display_name": "Scheduler Suppression",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "suppression_list_oversized": {
+                            "description": "The indicator tracks the size of the suppression list. By default, Yellow occurs when there are more than 1,000,000 rows in the suppression list file. You can disable this indicator by setting the threshold to 0.",
+                            "health": "green",
+                            "name": "suppression_list_oversized",
+                            "path": "splunkd.search_scheduler.scheduler_suppression.suppression_list_oversized"
+                        }
+                    },
+                    "search_lag": {
+                        "count_extremely_lagged_searches_last_hour": {
+                            "description": "This indicator checks whether there are any extremely lagged searches in the last hour. These are scheduled searches which have been unable to run within their configured interval. By default, this indicator is never Yellow, and is Red if there is at least 1 extremely lagged scheduled search. This is a numeric threshold rather than a percentage. Setting both thresholds to 0 will disable this indicator.",
+                            "health": "green",
+                            "name": "count_extremely_lagged_searches_last_hour",
+                            "path": "splunkd.search_scheduler.search_lag.count_extremely_lagged_searches_last_hour"
+                        },
+                        "display_name": "Search Lag",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "percent_searches_lagged_high_priority_last_24h": {
+                            "description": "This indicator tracks the lag rate of high priority scheduled searches. Search lag is a delay that occurs before a search starts. High priority scheduled searches are scheduled searches whose priority is set to \"higher\" or \"highest\". By default, this indicator is yellow if the search lag rate exceeds 10%.",
+                            "health": "green",
+                            "name": "percent_searches_lagged_high_priority_last_24h",
+                            "path": "splunkd.search_scheduler.search_lag.percent_searches_lagged_high_priority_last_24h"
+                        },
+                        "percent_searches_lagged_non_high_priority_last_24h": {
+                            "description": "This indicator tracks the lag rate for scheduled searches whose priority is set to \"default\". Search lag is a delay that occurs before a search starts. By default, this indicator is yellow if the search lag rate over the last 24 hours exceeds 40%.",
+                            "health": "green",
+                            "name": "percent_searches_lagged_non_high_priority_last_24h",
+                            "path": "splunkd.search_scheduler.search_lag.percent_searches_lagged_non_high_priority_last_24h"
+                        }
+                    },
+                    "searches_delayed": {
+                        "display_name": "Searches Delayed",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0,
+                        "percent_searches_delayed_high_priority_last_24h": {
+                            "description": "This indicator tracks the delayed search rate for high priority scheduled searches. These are scheduled searches where the priority field is set to \"higher\" or \"highest\". By default, this indicator is yellow if the delayed search ratio over the last 24 hours is 5%, and red if it is 10%.",
+                            "health": "green",
+                            "name": "percent_searches_delayed_high_priority_last_24h",
+                            "path": "splunkd.search_scheduler.searches_delayed.percent_searches_delayed_high_priority_last_24h"
+                        },
+                        "percent_searches_delayed_non_high_priority_last_24h": {
+                            "description": "This indicator tracks the delayed search rate for scheduled searches whose priority field is set to \"default\". By default, this indicator is yellow if the delayed search ratio over the last 24 hours is 10%, and red if it is 20%.",
+                            "health": "green",
+                            "name": "percent_searches_delayed_non_high_priority_last_24h",
+                            "path": "splunkd.search_scheduler.searches_delayed.percent_searches_delayed_non_high_priority_last_24h"
+                        }
+                    },
+                    "searches_skipped_in_the_last_24_hours": {
+                        "display_name": "Searches Skipped In The Last 24 Hours",
+                        "distributed_disabled": "0",
+                        "health": "red",
+                        "num_red": 3,
+                        "num_yellow": 1,
+                        "percent_searches_skipped_high_priority_last_24h": {
+                            "description": "This indicator tracks the skip rate for high priority scheduled searches. These are scheduled searches where the priority field is set to \"higher\" or \"highest\". By default, this indicator is yellow if the skipped search ratio over the last 24 hours is 5%, and red if it is 10%.",
+                            "health": "red",
+                            "instances": {
+                                "[redacted]": {
+                                    "guid": "[redacted]",
+                                    "health": "red",
+                                    "name": "splunk_server_15",
+                                    "reason": "The percentage of high priority searches skipped (100%) over the last 24 hours is very high and exceeded the red thresholds (10%) on this Splunk instance. Total Searches that were part of this percentage=1. Total skipped Searches=1",
+                                    "timestamp": "1715691928.966276"
+                                },
+                                "[redacted]": {
+                                    "guid": "[redacted]",
+                                    "health": "yellow",
+                                    "name": "splunk_server_16",
+                                    "reason": "The percentage of high priority searches skipped (6%) over the last 24 hours is very high and exceeded the yellow thresholds (5%) on this Splunk instance. Total Searches that were part of this percentage=232. Total skipped Searches=14",
+                                    "timestamp": "1715692200.510257"
+                                },
+                                "health": "red",
+                                "num_red": 1,
+                                "num_yellow": 1
+                            },
+                            "name": "percent_searches_skipped_high_priority_last_24h",
+                            "num_red": 1,
+                            "num_yellow": 1,
+                            "path": "splunkd.search_scheduler.searches_skipped_in_the_last_24_hours.percent_searches_skipped_high_priority_last_24h"
+                        },
+                        "percent_searches_skipped_non_high_priority_last_24h": {
+                            "description": "This indicator tracks the skip rate for scheduled searches whose priority field is set to \"default\". By default, this indicator is yellow if the skipped search ratio over the last 24 hours is 10%, and red if it is 20%.",
+                            "health": "red",
+                            "instances": {
+                                "[redacted]": {
+                                    "guid": "[redacted]",
+                                    "health": "red",
+                                    "name": "splunk_server_15",
+                                    "reason": "The percentage of non high priority searches skipped (28%) over the last 24 hours is very high and exceeded the red thresholds (20%) on this Splunk instance. Total Searches that were part of this percentage=45. Total skipped Searches=13",
+                                    "timestamp": "1715691928.966279"
+                                },
+                                "[redacted]": {
+                                    "guid": "[redacted]",
+                                    "health": "red",
+                                    "name": "splunk_server_07",
+                                    "reason": "The percentage of non high priority searches skipped (100%) over the last 24 hours is very high and exceeded the red thresholds (20%) on this Splunk instance. Total Searches that were part of this percentage=28. Total skipped Searches=28",
+                                    "timestamp": "1715690890.534279"
+                                },
+                                "health": "red",
+                                "num_red": 2,
+                                "num_yellow": 0
+                            },
+                            "name": "percent_searches_skipped_non_high_priority_last_24h",
+                            "num_red": 2,
+                            "num_yellow": 0,
+                            "path": "splunkd.search_scheduler.searches_skipped_in_the_last_24_hours.percent_searches_skipped_non_high_priority_last_24h"
+                        }
+                    }
+                },
+                "workload_management": {
+                    "admission_rules_check": {
+                        "admission_rules_check": {
+                            "description": "This indicator checks whether the workload management admission rules configurations are valid.",
+                            "health": "green",
+                            "name": "admission_rules_check",
+                            "path": "splunkd.workload_management.admission_rules_check.admission_rules_check"
+                        },
+                        "display_name": "Admission Rules Check",
+                        "distributed_disabled": "0",
+                        "health": "green",
+                        "num_red": 0,
+                        "num_yellow": 0
+                    },
+                    "health": "green",
+                    "num_red": 0,
+                    "num_yellow": 0
+                }
+            }
+        },
+        "health": "red"
+    }
+}
