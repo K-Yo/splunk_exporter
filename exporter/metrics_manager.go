@@ -18,6 +18,8 @@ var (
 )
 
 type Metric struct {
+	Name      string
+	Index     string
 	Desc      *prometheus.Desc
 	LabelsMap map[string]string //  key is splunk dimension, value is prom label. they are ordered.
 }
@@ -34,15 +36,9 @@ func (mm *MetricsManager) Add(metric config.Metric) {
 	level.Debug(mm.logger).Log("msg", "Registering metric", "namespace", "metrics", "name", metric.Name, "index", metric.Index)
 
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
-	name := mm.normalizeName(metric.Name)
-	labelsMap, labelsPromNames := mm.getLabels(metric)
 	mm.metrics[key] = Metric{
-		LabelsMap: labelsMap,
-		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName(mm.namespace, "metric", name),
-			fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
-			labelsPromNames, nil,
-		),
+		Name:  metric.Name,
+		Index: metric.Index,
 	}
 
 }
@@ -82,8 +78,19 @@ func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.MetricMeasure, *prometheus.Desc) error) bool {
 	metric, ok := mm.metrics[key]
 	if !ok {
-		level.Error(mm.logger).Log("msg", "Unknown metric name", "name", key)
-		return false
+		level.Error(mm.logger).Log("msg", "Unknown metric name, this should not happen", "name", key)
+	}
+	if metric.Desc == nil {
+		level.Debug(mm.logger).Log("msg", "First time seing this metric, will create desc for it.", "name", key)
+
+		name := mm.normalizeName(metric.Name)
+		labelsMap, labelsPromNames := mm.getLabels(metric)
+		metric.Desc = prometheus.NewDesc(
+			prometheus.BuildFQName(mm.namespace, "metric", name),
+			fmt.Sprintf("Splunk exported metric \"%s\" from index %s", metric.Name, metric.Index),
+			labelsPromNames, nil,
+		)
+		metric.LabelsMap = labelsMap
 	}
 	metricName, index, err := mm.parseMetricKey(key)
 	if err != nil {
@@ -108,7 +115,7 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.
 // it returns two items
 //   - a map whose keys are label names and values label values
 //   - a slice of label values (ordered after the map keys)
-func (mm *MetricsManager) getLabels(metric config.Metric) (map[string]string, []string) {
+func (mm *MetricsManager) getLabels(metric Metric) (map[string]string, []string) {
 	labelsSplunkNames := mm.splunk.GetDimensions(metric.Index, metric.Name)
 	level.Debug(mm.logger).Log("msg", "Retrieved labels for metric", "index", metric.Index, "metricName", metric.Name, "labels", strings.Join(labelsSplunkNames, ", "))
 	labelsMap := make(map[string]string)

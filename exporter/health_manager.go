@@ -10,10 +10,11 @@ import (
 )
 
 type HealthManager struct {
-	splunk      *splunklib.Splunk // Splunk client
-	namespace   string            // prometheus namespace for the metrics
-	logger      log.Logger
-	descriptors map[string]*prometheus.Desc
+	splunk            *splunklib.Splunk // Splunk client
+	namespace         string            // prometheus namespace for the metrics
+	logger            log.Logger
+	splunkdDescriptor *prometheus.Desc
+	descriptors       map[string]*prometheus.Desc
 }
 
 func newHealthManager(namespace string, spk *splunklib.Splunk, logger log.Logger) *HealthManager {
@@ -22,13 +23,16 @@ func newHealthManager(namespace string, spk *splunklib.Splunk, logger log.Logger
 
 	descriptors := make(map[string]*prometheus.Desc)
 	hm := HealthManager{
-		splunk:      spk,
-		namespace:   namespace,
-		logger:      logger,
+		splunk:    spk,
+		namespace: namespace,
+		logger:    logger,
+		splunkdDescriptor: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "health"),
+			"Splunk exported metric from splunkd health API",
+			[]string{"name"}, nil,
+		),
 		descriptors: descriptors,
 	}
-
-	hm.populateDescriptors()
 
 	level.Debug(logger).Log("msg", "Done initiating health manager")
 	return &hm
@@ -57,13 +61,11 @@ func (hm *HealthManager) getMetrics(ch chan<- prometheus.Metric, path string, fh
 			level.Error(hm.logger).Log("msg", "Cannot get metrics because of health value", "path", path, "err", err)
 			ret = false
 		}
-		descriptor, ok := hm.descriptors[path]
-		if !ok {
-			level.Error(hm.logger).Log("msg", "Descriptor was not created on startup", "err", err)
-			ret = false
+		if path == "" {
+			path = "/"
 		}
 		ch <- prometheus.MustNewConstMetric(
-			descriptor, prometheus.GaugeValue, healthValue, path,
+			hm.splunkdDescriptor, prometheus.GaugeValue, healthValue, path,
 		)
 	}
 
@@ -86,30 +88,4 @@ func (hm *HealthManager) healthToFloat(health string) (float64, error) {
 	} else {
 		return 0.0, fmt.Errorf("unknown health value: %s", health)
 	}
-}
-
-func (hm *HealthManager) populateDescriptors() {
-	splunkdHealth := splunklib.HealthSplunkdDetails{}
-	if err := hm.splunk.Client.Read(&splunkdHealth); err != nil {
-		level.Error(hm.logger).Log("msg", "failed to read health data", "err", err)
-	}
-
-	hm.populateDescriptorsFromFeatureHealth(&splunkdHealth.Content, "")
-}
-
-// populateDescriptorsFromFeatureHealth recursively adds all health metrics from an API response
-func (hm *HealthManager) populateDescriptorsFromFeatureHealth(fh *splunklib.FeatureHealth, path string) {
-
-	level.Debug(hm.logger).Log("msg", "Adding descriptor", "namespace", "health", "name", path)
-
-	hm.descriptors[path] = prometheus.NewDesc(
-		prometheus.BuildFQName(hm.namespace, "", "health"),
-		"Splunk exported metric from splunkd health API",
-		[]string{"name"}, nil,
-	)
-
-	for name, child := range fh.Features {
-		hm.populateDescriptorsFromFeatureHealth(&child, fmt.Sprintf("%s/%s", path, name))
-	}
-
 }
