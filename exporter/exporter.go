@@ -199,7 +199,6 @@ func (e *Exporter) measureIndex(ch chan<- prometheus.Metric, index *splunklib.Da
 // see https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 func (e *Exporter) normalizeName(oldName string) string {
 	newName := invalidPromNameChar.ReplaceAllString(oldName, "_")
-	level.Debug(e.logger).Log("msg", "normalized name", "old", oldName, "new", newName)
 	return newName
 }
 

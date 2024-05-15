@@ -31,7 +31,7 @@ type MetricsManager struct {
 // Add adds a new metric to the metrics manager from a configuration
 func (mm *MetricsManager) Add(metric config.Metric) {
 
-	level.Debug(mm.logger).Log("msg", "Adding descriptor", "namespace", "metrics", "name", metric.Name, "index", metric.Index)
+	level.Debug(mm.logger).Log("msg", "Registering metric", "namespace", "metrics", "name", metric.Name, "index", metric.Index)
 
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
 	name := mm.normalizeName(metric.Name)
