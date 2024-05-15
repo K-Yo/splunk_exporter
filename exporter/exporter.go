@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/K-Yo/splunk_exporter/config"
-	"github.com/K-Yo/splunk_exporter/splunk"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -35,7 +34,7 @@ var (
 
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
 type Exporter struct {
-	splunk         *splunk.Splunk
+	splunk         *splunklib.Splunk
 	logger         log.Logger
 	indexedMetrics *MetricsManager
 	healthMetrics  *HealthManager
@@ -81,7 +80,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 		TLSInsecureSkipVerify: opts.Insecure,
 	}
 
-	spk := splunk.Splunk{
+	spk := splunklib.Splunk{
 		Client: &client,
 		Logger: logger,
 	}
