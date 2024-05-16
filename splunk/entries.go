@@ -13,6 +13,17 @@ type HealthSplunkdDetails struct {
 	Content FeatureHealth `json:"content"`
 }
 
+type HealthDeploymentDetailsContent struct {
+	Features map[string]interface{} `json:"features"`
+	Health   string                 `json:"health"`
+	Disabled bool                   `json:"disabled"`
+}
+
+type HealthDeploymentDetails struct {
+	ID      client.ID                      `selective:"create" service:"server/health/deployment/details"`
+	Content HealthDeploymentDetailsContent `json:"content"`
+}
+
 type ServerIntrospectionIndexerContent struct {
 	AverageKBps float64 `json:"average_KBps"` // Average indexer throughput (kbps).
 	Reason      string  `json:"reason"`       // Status explanation. For a normal status, returns `.` . The following examples show possible abnormal status reasons.
