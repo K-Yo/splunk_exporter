@@ -27,12 +27,16 @@ To stop it:
 docker compose down
 ```
 
-## 🙋 Contribute
+## 👷 Contribute
 
 After doing some changes, possible to re-deploy splunk_exporter with the following command
 ```shell
 docker compose up -d --build splunk_exporter
 ```
+
+## 🛠️ Configuration
+
+See an example configuration file in [`splunk_exporter_example.yml`](./splunk_exporter_example.yml).
 
 ## 📏 metrics
 
@@ -48,6 +52,13 @@ All metrics are **Gauge**.
 | `splunk_exporter_health_splunkd`                       | Health status from local splunkd                  |
 | `splunk_exporter_health_deployment`                    | Health status from deployment                     |
 
-## ⛔ Limitations
+## ✨ Roadmap
 
-Currently, only one splunk instance is supported
+| Item                         | Status            |
+| ---------------------------- | ----------------- |
+| Metrics indexes              | ✅ Done            |
+| Support several server roles | 🕰️ Ongoing         |
+| Indexes metrics              | 🕰️ Ongoing         |
+| Savedsearches metrics        | 🔜 Next            |
+| System metrics               | ❓ Not planned yet |
+| Ingestion pipeline           | ❓ Not planned yet |
