@@ -81,7 +81,7 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.
 		level.Error(mm.logger).Log("msg", "Unknown metric name, this should not happen", "name", key)
 	}
 	if metric.Desc == nil {
-		level.Debug(mm.logger).Log("msg", "First time seing this metric, will create desc for it.", "name", key)
+		level.Debug(mm.logger).Log("msg", "First time seeing this metric, will create desc for it.", "name", key)
 
 		name := mm.normalizeName(metric.Name)
 		labelsMap, labelsPromNames := mm.getLabels(metric)
