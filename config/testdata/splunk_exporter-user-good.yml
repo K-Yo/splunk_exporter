@@ -1,0 +1,8 @@
+url: https://splunk:8089
+token: 'eyJraWQiOiJzcGx1bmsuc2VjcmV0IiwiYWxnIjoiSFM1MTIiLCJ2ZXIiOiJ2MiIsInR0eXAiOiJzdGF0aWMifQ.eyJpc3MiOiJhZG1pbiBmcm9tIDA3MTJmNjcwZTgwOCIsInN1YiI6ImFkbWluIiwiYXVkIjoic3BsdW5rX2V4cG9ydGVyIiwiaWRwIjoiU3BsdW5rIiwianRpIjoiOWMzN2M2N2NmYzM0ZTliYjE0ZThjZjI0ZDllNDFkZWNiNDU3MTI0OWI1NTZjYzQ3MWE1MjJjMDJmZDZlMTFmYSIsImlhdCI6MTcxNDQ3ODQ1NiwiZXhwIjoxNzE3MDcwNDU2LCJuYnIiOjE3MTQ0Nzg0NTZ9.E6rKIFP2Y8lHYqDfOLxAxQhABE7dTB104wB8G1jcfyhODtrSj7RQS6IzpCOcW_hSSXpZNjIyi4E4XyD_YYwvRw'
+insecure: true
+metrics:
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_event_count
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_bucket_count
