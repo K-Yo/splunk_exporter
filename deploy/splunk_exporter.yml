@@ -1,4 +1,4 @@
-url: https://splunk:8089
+url: https://dmc:8089
 username: admin
 password: splunkadmin
 insecure: true
