@@ -1,5 +1,6 @@
 url: https://splunk:8089
-token: '${SPLUNK_TOKEN}'
+username: admin
+password: splunkadmin
 insecure: true
 metrics:
   - index: _metrics
