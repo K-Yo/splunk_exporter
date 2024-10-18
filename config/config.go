@@ -19,7 +19,7 @@ type Metric struct {
 type Config struct {
 	URL      string   `yaml:"url"`
 	Token    string   `yaml:"token"`
-	User     string   `yaml:"user"`
+	Username string   `yaml:"username"`
 	Password string   `yaml:"password"`
 	Insecure bool     `yaml:"insecure"` // defaults to false
 	Metrics  []Metric `yaml:"metrics"`

@@ -46,7 +46,7 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 	opts := SplunkOpts{
 		URI:      conf.URL,
 		Token:    conf.Token,
-		Username: conf.User,
+		Username: conf.Username,
 		Password: conf.Password,
 		Insecure: conf.Insecure,
 	}
