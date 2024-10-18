@@ -1,4 +1,5 @@
-# Splunk API endpoint
+
+# Monitoring console (or Search Head)
 url: https://localhost:8089
 
 # Splunk API key
