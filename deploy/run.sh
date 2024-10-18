@@ -6,7 +6,7 @@ set -e
 set -v
 
 # Start the stack
-export SPLUNK_IMAGE="splunk/splunk:9.2"
+export SPLUNK_IMAGE="splunk/splunk:9.3"
 docker run --rm -it ${SPLUNK_IMAGE:-splunk/splunk:latest} create-defaults > default.yml
 docker compose up -d --remove-orphans 
 
