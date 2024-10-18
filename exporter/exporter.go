@@ -90,6 +90,9 @@ func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, 
 		}
 	} else {
 		level.Info(logger).Log("msg", "Token is not defined, we will use password authentication.", "username", opts.Username)
+		if len(opts.Password) == 0 {
+			level.Warn(logger).Log("msg", "Password seems to be undefined.")
+		}
 		authenticator = &authenticators.Password{
 			Username: opts.Username,
 			Password: opts.Password,
