@@ -45,20 +45,20 @@ All metrics are **Gauge**.
 
 ### from API
 
-| Prefix                                                 | Description                                       |
-| ------------------------------------------------------ | ------------------------------------------------- |
-| `splunk_exporter_index_`                               | Numerical data coming from data/indexes endpoint. |
-| `splunk_exporter_indexer_throughput_bytes_per_seconds` | average data throughput in indexer                |
-| `splunk_exporter_metric_`                              | Export from metric indexes                        |
-| `splunk_exporter_health_splunkd`                       | Health status from local splunkd                  |
-| `splunk_exporter_health_deployment`                    | Health status from deployment                     |
+| Prefix                                                 | Labels                        | Description                                       |
+| ------------------------------------------------------ | ----------------------------- | ------------------------------------------------- |
+| `splunk_exporter_index_`                               | `index_name`                  | Numerical data coming from data/indexes endpoint. |
+| `splunk_exporter_indexer_throughput_bytes_per_seconds` | _None_                        | Average data throughput in indexer                |
+| `splunk_exporter_metric_`                              | Dimensions returned by Splunk | Export from metric indexes                        |
+| `splunk_exporter_health_splunkd`                       | `name`                        | Health status from local splunkd                  |
+| `splunk_exporter_health_deployment`                    | `instance_id`, `name`         | Health status from deployment                     |
 
 ## ✨ Roadmap
 
-| Item                         | Status            |
-| ---------------------------- | ----------------- |
-| Metrics indexes              | ✅ Done            |
-| Indexes metrics              | 🕰️ Ongoing         |
-| Savedsearches metrics        | 🔜 Next            |
-| System metrics               | ❓ Not planned yet |
-| Ingestion pipeline           | ❓ Not planned yet |
+| Item                  | Status            |
+| --------------------- | ----------------- |
+| Metrics indexes       | ✅ Done            |
+| Indexes metrics       | 🕰️ Ongoing         |
+| Savedsearches metrics | 🔜 Next            |
+| System metrics        | ❓ Not planned yet |
+| Ingestion pipeline    | ❓ Not planned yet |
