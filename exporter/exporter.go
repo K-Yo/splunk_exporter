@@ -42,46 +42,78 @@ type Exporter struct {
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
-	// FIXME need to re-validate params
-	e.splunk.Client.TLSInsecureSkipVerify = conf.Insecure
-	e.splunk.Client.URL = conf.URL
-	e.splunk.Client.Authenticator = authenticators.Token{
-		Token: conf.Token,
+
+	opts := SplunkOpts{
+		URI:      conf.URL,
+		Token:    conf.Token,
+		Username: conf.User,
+		Password: conf.Password,
+		Insecure: conf.Insecure,
 	}
+
+	client, err := getSplunkClient(opts, e.logger)
+
+	if err != nil {
+		level.Error(e.logger).Log("msg", "Could not get Splunk client", "err", err)
+	}
+	e.splunk.Client = client
 }
 
 type SplunkOpts struct {
 	URI      string
 	Token    string
+	Username string
+	Password string
 	Insecure bool
 }
 
-// New creates a new exporter for Splunk metrics
-func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Exporter, error) {
+// getSplunkClient generates a Splunk client from parameters
+// this function validates parameters and returns an error if they are not valid.
+func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, error) {
 
-	uri := opts.URI
-	if !strings.Contains(uri, "://") {
-		uri = "https://" + uri
+	if !strings.Contains(opts.URI, "://") {
+		opts.URI = "https://" + opts.URI
 	}
-	u, err := url.Parse(uri)
+	u, err := url.Parse(opts.URI)
 	if err != nil {
 		return nil, fmt.Errorf("invalid splunk URL: %s", err)
 	}
 	if u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return nil, fmt.Errorf("invalid splunk URL: %s", uri)
+		return nil, fmt.Errorf("invalid splunk URL: %s", opts.URI)
 	}
 
-	authenticator := authenticators.Token{
-		Token: opts.Token,
+	var authenticator splunkclient.Authenticator
+	if len(opts.Token) > 0 {
+		level.Info(logger).Log("msg", "Token is defined, we will use it for authentication.")
+		authenticator = authenticators.Token{
+			Token: opts.Token,
+		}
+	} else {
+		level.Info(logger).Log("msg", "Token is not defined, we will use password authentication.", "username", opts.Username)
+		authenticator = &authenticators.Password{
+			Username: opts.Username,
+			Password: opts.Password,
+		}
 	}
 	client := splunkclient.Client{
 		URL:                   opts.URI,
 		Authenticator:         authenticator,
 		TLSInsecureSkipVerify: opts.Insecure,
 	}
+	return &client, nil
+}
+
+// New creates a new exporter for Splunk metrics
+func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Exporter, error) {
+
+	client, err := getSplunkClient(opts, logger)
+
+	if err != nil {
+		level.Error(logger).Log("msg", "Could not get Splunk client", "err", err)
+	}
 
 	spk := splunklib.Splunk{
-		Client: &client,
+		Client: client,
 		Logger: logger,
 	}
 
