@@ -17,7 +17,7 @@ You will need a configuration file, follow [`splunk_exporter_example.yml`](./spl
 You need docker compose installed, a bash helper is provided to start the exporter and the whole test bench as a [docker compose environment](./deploy/README.md).
 
 ```shell
-cd /deploy
+cd deploy/
 bash run.sh
 ```
 
@@ -36,6 +36,7 @@ docker compose up -d --build splunk_exporter
 
 ## 🛠️ Configuration
 
+Splunk exporter needs to access management APIs
 See an example configuration file in [`splunk_exporter_example.yml`](./splunk_exporter_example.yml).
 
 ## 📏 metrics
@@ -57,7 +58,6 @@ All metrics are **Gauge**.
 | Item                         | Status            |
 | ---------------------------- | ----------------- |
 | Metrics indexes              | ✅ Done            |
-| Support several server roles | 🕰️ Ongoing         |
 | Indexes metrics              | 🕰️ Ongoing         |
 | Savedsearches metrics        | 🔜 Next            |
 | System metrics               | ❓ Not planned yet |
