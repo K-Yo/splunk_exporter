@@ -43,9 +43,9 @@ func (mm *MetricsManager) Add(metric config.Metric) {
 
 }
 
-// ProcessMeasures will get all measures and send generated metrics in channel
+// CollectMeasures will get all measures and send generated metrics in channel
 // returns true if everything went well
-func (mm *MetricsManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
+func (mm *MetricsManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
 	level.Info(mm.logger).Log("msg", "Getting custom measures")
 
 	processMetricCallback := func(measure splunklib.MetricMeasure, descriptor *prometheus.Desc) error {

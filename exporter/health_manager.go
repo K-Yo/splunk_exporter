@@ -42,7 +42,7 @@ func newHealthManager(namespace string, spk *splunklib.Splunk, logger log.Logger
 	return &hm
 }
 
-func (hm *HealthManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
+func (hm *HealthManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
 
 	// collect splunkd health metrics
 	level.Info(hm.logger).Log("msg", "Collecting Splunkd Health measures")
@@ -52,7 +52,7 @@ func (hm *HealthManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 		return false
 	}
 
-	ret := hm.getMetricsSplunkd(ch, "", &splunkdHealth.Content)
+	ret := hm.collectMetricsSplunkd(ch, "", &splunkdHealth.Content)
 
 	level.Info(hm.logger).Log("msg", "Done collecting Splunkd Health measures")
 
@@ -66,15 +66,15 @@ func (hm *HealthManager) ProcessMeasures(ch chan<- prometheus.Metric) bool {
 		return false
 	}
 
-	ret = ret && hm.getMetricsDeployment(ch, "", deploymentHealth.Content.Features)
+	ret = ret && hm.collectMetricsDeployment(ch, "", deploymentHealth.Content.Features)
 	level.Info(hm.logger).Log("msg", "Done collecting Deployment Health measures")
 
 	return ret
 }
 
-// getMetricsSplunkd recursively get all metric measures from a health endpoint result and sends them in the channel
+// collectMetricsSplunkd recursively get all metric measures from a health endpoint result and sends them in the channel
 // disabled features are not measured
-func (hm *HealthManager) getMetricsSplunkd(ch chan<- prometheus.Metric, path string, fh *splunklib.FeatureHealth) bool {
+func (hm *HealthManager) collectMetricsSplunkd(ch chan<- prometheus.Metric, path string, fh *splunklib.FeatureHealth) bool {
 	ret := true
 	if !fh.Disabled {
 		healthValue, err := hm.healthToFloat(fh.Health)
@@ -92,16 +92,16 @@ func (hm *HealthManager) getMetricsSplunkd(ch chan<- prometheus.Metric, path str
 	}
 
 	for name, child := range fh.Features {
-		ret = ret && hm.getMetricsSplunkd(ch, fmt.Sprintf("%s/%s", path, name), &child)
+		ret = ret && hm.collectMetricsSplunkd(ch, fmt.Sprintf("%s/%s", path, name), &child)
 	}
 
 	return ret
 
 }
 
-// getMetricsDeployment recursively get all metric measures from a health endpoint result and sends them in the channel
+// collectMetricsDeployment recursively get all metric measures from a health endpoint result and sends them in the channel
 // disabled features are not measured
-func (hm *HealthManager) getMetricsDeployment(ch chan<- prometheus.Metric, path string, data map[string]interface{}) bool {
+func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, path string, data map[string]interface{}) bool {
 	level.Debug(hm.logger).Log("msg", "Getting Deployment metrics", "path", path)
 	ret := true
 	var disabled bool = false
@@ -133,7 +133,7 @@ func (hm *HealthManager) getMetricsDeployment(ch chan<- prometheus.Metric, path 
 		case map[string]interface{}:
 			newPath := fmt.Sprintf("%s/%s", path, key)
 			// recursively get lower level metrics
-			ret = ret && hm.getMetricsDeployment(ch, newPath, v)
+			ret = ret && hm.collectMetricsDeployment(ch, newPath, v)
 		default:
 			level.Error(hm.logger).Log("msg", "unknown type for key", "key", key, "path", path)
 		}

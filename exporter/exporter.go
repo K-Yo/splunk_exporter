@@ -161,13 +161,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 // collectConfiguredMetrics gets metric measures from splunk indexes as specified by configuration
 func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 
-	return e.indexedMetrics.ProcessMeasures(ch)
+	return e.indexedMetrics.CollectMeasures(ch)
 
 }
 
 // collectHealthMetrics grabs metrics from Splunk Health endpoints
 func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
-	return e.healthMetrics.ProcessMeasures(ch)
+	return e.healthMetrics.CollectMeasures(ch)
 }
 
 func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
