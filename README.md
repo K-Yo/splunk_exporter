@@ -53,6 +53,12 @@ All metrics are **Gauge**.
 | `splunk_exporter_health_splunkd`                       | `name`                        | Health status from local splunkd                  |
 | `splunk_exporter_health_deployment`                    | `instance_id`, `name`         | Health status from deployment                     |
 
+## 🧑‍🔬 Testing
+
+```shell
+go test -v ./...
+```
+
 ## ✨ Roadmap
 
 | Item                  | Status            |
