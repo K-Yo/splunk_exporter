@@ -13,8 +13,10 @@ import (
 	"syscall"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
@@ -67,49 +69,16 @@ func run() int {
 		return 1
 	}
 
-	// register exporter
-	opts := exporter.SplunkOpts{
-		URI:      sc.C.URL,
-		Token:    sc.C.Token,
-		Username: sc.C.Username,
-		Password: sc.C.Password,
-		Insecure: sc.C.Insecure,
-	}
-	exp, err := exporter.New(opts, logger, sc.C.Metrics)
+	exp, err := createAndRegisterExporter(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "could not create exporter", "err", err)
 		return 1
 	}
 
-	prometheus.MustRegister(exp)
-
-	// Infer or set Splunk exporter externalURL
-	listenAddrs := toolkitFlags.WebListenAddresses
-	if *externalURL == "" && *toolkitFlags.WebSystemdSocket {
-		level.Error(logger).Log("msg", "Cannot automatically infer external URL with systemd socket listener. Please provide --web.external-url")
-		return 1
-	} else if *externalURL == "" && len(*listenAddrs) > 1 {
-		level.Info(logger).Log("msg", "Inferring external URL from first provided listen address")
-	}
-	beURL, err := computeExternalURL(*externalURL, (*listenAddrs)[0])
+	beURL, err := getRoutePrefix(logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to determine external URL", "err", err)
 		return 1
 	}
-	level.Debug(logger).Log("externalURL", beURL.String())
 
-	// Default -web.route-prefix to path of -web.external-url.
-	if *routePrefix == "" {
-		*routePrefix = beURL.Path
-	}
-
-	// routePrefix must always be at least '/'.
-	*routePrefix = "/" + strings.Trim(*routePrefix, "/")
-	// routePrefix requires path to have trailing "/" in order
-	// for browsers to interpret the path-relative path correctly, instead of stripping it.
-	if *routePrefix != "/" {
-		*routePrefix = *routePrefix + "/"
-	}
 	level.Debug(logger).Log("routePrefix", *routePrefix)
 
 	hup := make(chan os.Signal, 1)
@@ -244,6 +213,61 @@ func run() int {
 		}
 	}
 
+}
+
+// createAndRegisterExporter creates an exporter from configuration and returns it.
+func createAndRegisterExporter(logger log.Logger) (*exporter.Exporter, error) {
+	// register exporter
+	opts := exporter.SplunkOpts{
+		URI:      sc.C.URL,
+		Token:    sc.C.Token,
+		Username: sc.C.Username,
+		Password: sc.C.Password,
+		Insecure: sc.C.Insecure,
+	}
+	exp, err := exporter.New(opts, logger, sc.C.Metrics)
+	if err != nil {
+		level.Error(logger).Log("msg", "could not create exporter", "err", err)
+		return nil, err
+	}
+
+	prometheus.MustRegister(exp)
+
+	return exp, nil
+}
+
+// getRoutePrefix computes the route prefix from parameters.
+// it returns the base URL.
+func getRoutePrefix(logger log.Logger) (*url.URL, error) {
+
+	// Infer or set Splunk exporter externalURL
+	listenAddrs := toolkitFlags.WebListenAddresses
+	if *externalURL == "" && *toolkitFlags.WebSystemdSocket {
+		level.Error(logger).Log("msg", "Cannot automatically infer external URL with systemd socket listener. Please provide --web.external-url")
+		return nil, fmt.Errorf("Cannot automatically infer external URL with systemd socket listener. Please provide --web.external-url")
+	} else if *externalURL == "" && len(*listenAddrs) > 1 {
+		level.Info(logger).Log("msg", "Inferring external URL from first provided listen address")
+	}
+	beURL, err := computeExternalURL(*externalURL, (*listenAddrs)[0])
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to determine external URL", "err", err)
+		return nil, fmt.Errorf("failed to determine external URL")
+	}
+	level.Debug(logger).Log("externalURL", beURL.String())
+
+	// Default -web.route-prefix to path of -web.external-url.
+	if *routePrefix == "" {
+		*routePrefix = beURL.Path
+	}
+
+	// routePrefix must always be at least '/'.
+	*routePrefix = "/" + strings.Trim(*routePrefix, "/")
+	// routePrefix requires path to have trailing "/" in order
+	// for browsers to interpret the path-relative path correctly, instead of stripping it.
+	if *routePrefix != "/" {
+		*routePrefix = *routePrefix + "/"
+	}
+	return beURL, nil
 }
 
 func startsOrEndsWithQuote(s string) bool {
