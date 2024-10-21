@@ -1,8 +1,12 @@
-# Splunk API endpoint
+
+# Monitoring console (or Search Head)
 url: https://localhost:8089
 
 # Splunk API key
 token: '<insert api key>'
+# OR
+user: 'changeme'
+password: 'changeme'
 
 # should we skip TLS validation ?
 insecure: false

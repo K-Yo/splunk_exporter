@@ -21,5 +21,6 @@
 go.work
 
 # runtime files
-splunk_exporter.yml
+/splunk_exporter.yml
 /splunk_exporter
+deploy/default.yml

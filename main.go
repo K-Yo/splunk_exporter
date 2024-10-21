@@ -71,6 +71,8 @@ func run() int {
 	opts := exporter.SplunkOpts{
 		URI:      sc.C.URL,
 		Token:    sc.C.Token,
+		Username: sc.C.Username,
+		Password: sc.C.Password,
 		Insecure: sc.C.Insecure,
 	}
 	exp, err := exporter.New(opts, logger, sc.C.Metrics)

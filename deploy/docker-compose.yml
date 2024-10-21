@@ -55,18 +55,55 @@ services:
     command: /splunk_exporter --config.file /splunk_exporter.yml --log.level=debug
     # add /etc/ssl/certs/ca-certificates.crt if needed
   
+  # splunk:
+  #   image: splunk/splunk:9.2
+  #   restart: unless-stopped
+  #   container_name: splunk
+  #   environment:
+  #     - SPLUNK_START_ARGS=--accept-license
+  #     - SPLUNK_PASSWORD=splunkadmin
+  #   expose:
+  #     - 8000
+  #     - 8089
+  #   ports:
+  #     - 8000:8000
+  #     - 8089:8089
+  #   networks:
+  #     - monitoring
+
   splunk:
-    image: splunk/splunk:9.2
-    restart: unless-stopped
     container_name: splunk
+    networks:
+      monitoring:
+        aliases:
+          - splunk
+    image: ${SPLUNK_IMAGE:-splunk/splunk:latest}
+    hostname: splunk
     environment:
       - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_STANDALONE_URL=splunk
+      - DEBUG=true
       - SPLUNK_PASSWORD=splunkadmin
-    expose:
+    ports:
       - 8000
       - 8089
-    ports:
-      - 8000:8000
-      - 8089:8089
+
+  dmc:
+    container_name: dmc
     networks:
-      - monitoring
+      monitoring:
+        aliases:
+          - dmc
+    image: ${SPLUNK_IMAGE:-splunk/splunk:latest}
+    command: start
+    hostname: dmc
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_STANDALONE_URL=splunk
+      - SPLUNK_ROLE=splunk_monitor
+      - SPLUNK_LICENSE_URI
+      - SPLUNK_PASSWORD=splunkadmin
+      - DEBUG=true
+    ports:
+      - 8000
+      - 8089

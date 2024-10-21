@@ -19,6 +19,8 @@ type Metric struct {
 type Config struct {
 	URL      string   `yaml:"url"`
 	Token    string   `yaml:"token"`
+	Username string   `yaml:"username"`
+	Password string   `yaml:"password"`
 	Insecure bool     `yaml:"insecure"` // defaults to false
 	Metrics  []Metric `yaml:"metrics"`
 }
@@ -61,6 +63,7 @@ func (sc *SafeConfig) ReloadConfig(confFile string, logger log.Logger) (err erro
 		return fmt.Errorf("error reading config file: %s", err)
 	}
 	defer yamlReader.Close()
+
 	decoder := yaml.NewDecoder(yamlReader)
 	decoder.KnownFields(true)
 

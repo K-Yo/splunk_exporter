@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -14,10 +15,12 @@ import (
 
 func TestDeployment(t *testing.T) {
 	_, w, _ := os.Pipe()
+	defer w.Close()
+
 	logger := log.NewJSONLogger(w)
 	hm := HealthManager{
 		logger:               logger,
-		deploymentDescriptor: prometheus.NewDesc("metric", "", []string{"name"}, nil),
+		deploymentDescriptor: prometheus.NewDesc("metric", "", []string{"name", "instance_id"}, nil),
 	}
 
 	var deploymentHealth splunklib.HealthDeploymentDetails
@@ -27,12 +30,25 @@ func TestDeployment(t *testing.T) {
 
 	json.Unmarshal(fileContent, &deploymentHealth)
 
-	ret := hm.getMetricsDeployment(
-		make(chan<- prometheus.Metric),
-		"",
-		deploymentHealth.Content.Features,
-	)
+	ch := make(chan prometheus.Metric)
 
-	assert.True(t, ret)
+	// launch collector
+	go func() {
+		ret := hm.collectMetricsDeployment(
+			ch,
+			"",
+			deploymentHealth.Content.Features,
+		)
+		close(ch)
+
+		assert.True(t, ret)
+	}()
+
+	// empty chan
+	go func() {
+		for x := <-ch; x != nil; x = <-ch {
+			fmt.Fprintln(os.Stdout, x)
+		}
+	}()
 
 }

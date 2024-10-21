@@ -1,0 +1,9 @@
+url: https://dmc:8089
+username: admin
+password: splunkadmin
+insecure: true
+metrics:
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_event_count
+  - index: _metrics
+    name: spl.intr.disk_objects.Indexes.data.total_bucket_count
