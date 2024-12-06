@@ -1,0 +1,1 @@
+{"go-coverage-action-fmt":1,"coverage_pct":14.76510067114094,"pkg_stats":{"github.com/K-Yo/splunk_exporter":[0],"github.com/K-Yo/splunk_exporter/config":[85.71428571428571],"github.com/K-Yo/splunk_exporter/exporter":[20.77922077922078],"github.com/K-Yo/splunk_exporter/splunk":[0]},"skipped_count":0}
