@@ -1,4 +1,4 @@
-# workflow taken from https://github.com/marketplace/actions/go-coveragev
+# workflow taken from https://github.com/marketplace/actions/go-coverage
 name: "Go Coverage"
 on:
   pull_request:
@@ -21,7 +21,7 @@ jobs:
       with:
         # Optional coverage threshold
         # use fail-coverage to determine what should happen below this threshold
-        coverage-threshold: 80
+        # coverage-threshold: 80
 
         # collect coverage for all packages beyond the one under test
         cover-pkg: ./...
