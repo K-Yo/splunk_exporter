@@ -59,6 +59,13 @@ All metrics are **Gauge**.
 go test -v ./...
 ```
 
+To check coverage:
+
+```shell
+go test -v ./... --coverprofile cover.out
+go tool cover -html=cover.out
+```
+
 ## ✨ Roadmap
 
 | Item                  | Status            |

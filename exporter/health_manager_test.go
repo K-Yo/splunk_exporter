@@ -2,7 +2,6 @@ package exporter
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -47,7 +46,6 @@ func TestDeployment(t *testing.T) {
 	// empty chan
 	go func() {
 		for x := <-ch; x != nil; x = <-ch {
-			fmt.Fprintln(os.Stdout, x)
 		}
 	}()
 
