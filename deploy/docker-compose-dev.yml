@@ -39,20 +39,17 @@ services:
       - monitoring
   
   splunk_exporter:
-    restart: unless-stopped
-    container_name: splunk_exporter
-    build:
-      context: ..
+    image: golang:1.21
     ports:
       - 9115:9115
     expose:
       - 9115
     networks:
       - monitoring
-    volumes:
-      - ./splunk_exporter.yml:/splunk_exporter.yml:ro
-    command: /splunk_exporter --config.file /splunk_exporter.yml --log.level=debug
+    command: sleep infinity
     # add /etc/ssl/certs/ca-certificates.crt if needed
+  
+
   
   # splunk:
   #   image: splunk/splunk:9.2
