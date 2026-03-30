@@ -52,6 +52,9 @@ All metrics are **Gauge**.
 | `splunk_exporter_metric_`                              | Dimensions returned by Splunk | Export from metric indexes                        |
 | `splunk_exporter_health_splunkd`                       | `name`                        | Health status from local splunkd                  |
 | `splunk_exporter_health_deployment`                    | `instance_id`, `name`         | Health status from deployment                     |
+| `splunk_exporter_kvstore_status`                       | `server`                      | KVStore status (0=invalid, 1=ready, 2=starting, 3=shuttingdown, 4=disabled, 5=failed, 6=unknown) |
+| `splunk_exporter_kvstore_member_status`                | `server`, `member`            | KVStore member replication status (0=invalid, 1=captain, 2=member, 3=recovering, 4=initial sync, 5=startup, 6=down, 7=rollback, 8=removed, 9=unknown) |
+| `splunk_exporter_kvstore_member_uptime_seconds`        | `server`, `member`            | KVStore member uptime in seconds                  |
 
 ## 🧑‍🔬 Testing
 
@@ -65,6 +68,7 @@ go test -v ./...
 | --------------------- | ----------------- |
 | Metrics indexes       | ✅ Done            |
 | Indexes metrics       | 🕰️ Ongoing         |
+| KVStore metrics       | ✅ Done            |
 | Savedsearches metrics | 🔜 Next            |
 | System metrics        | ❓ Not planned yet |
 | Ingestion pipeline    | ❓ Not planned yet |

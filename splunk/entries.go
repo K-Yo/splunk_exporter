@@ -41,3 +41,9 @@ type DataIndex struct {
 	ID      client.ID              `selective:"create" service:"data/indexes"`
 	Content map[string]interface{} `json:"content"`
 }
+
+// KVStoreStatus https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTkvstore#kvstore.2Fstatus
+type KVStoreStatus struct {
+	ID      client.ID              `selective:"create" service:"kvstore/status"`
+	Content map[string]interface{} `json:"content"` // Dynamic structure with members.X.* fields
+}
