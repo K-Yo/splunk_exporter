@@ -135,7 +135,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 			// recursively get lower level metrics
 			ret = ret && hm.collectMetricsDeployment(ch, newPath, v)
 		default:
-			level.Error(hm.logger).Log("msg", "unknown type for key", "key", key, "path", path)
+			level.Debug(hm.logger).Log("msg", "unknown type for key", "key", key, "path", path)
 		}
 	}
 	level.Debug(hm.logger).Log("num_red", num_red, "num_yellow", num_yellow)
