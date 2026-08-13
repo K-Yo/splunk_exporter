@@ -123,6 +123,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 
 	if err != nil {
 		level.Error(logger).Log("msg", "Could not get Splunk client", "err", err)
+		return nil, err
 	}
 
 	spk := splunklib.Splunk{
