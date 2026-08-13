@@ -2,25 +2,24 @@ package exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type HealthManager struct {
 	splunk               *splunklib.Splunk // Splunk client
 	namespace            string            // prometheus namespace for the metrics
-	logger               log.Logger
+	logger               *slog.Logger
 	splunkdDescriptor    *prometheus.Desc
 	deploymentDescriptor *prometheus.Desc
 }
 
-func newHealthManager(namespace string, spk *splunklib.Splunk, logger log.Logger) *HealthManager {
+func newHealthManager(namespace string, spk *splunklib.Splunk, logger *slog.Logger) *HealthManager {
 
-	level.Debug(logger).Log("msg", "Initiating health manager")
+	logger.Debug("Initiating health manager")
 
 	hm := HealthManager{
 		splunk:    spk,
@@ -38,36 +37,36 @@ func newHealthManager(namespace string, spk *splunklib.Splunk, logger log.Logger
 		),
 	}
 
-	level.Debug(logger).Log("msg", "Done initiating health manager")
+	logger.Debug("Done initiating health manager")
 	return &hm
 }
 
 func (hm *HealthManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
 
 	// collect splunkd health metrics
-	level.Info(hm.logger).Log("msg", "Collecting Splunkd Health measures")
+	hm.logger.Info("Collecting Splunkd Health measures")
 	splunkdHealth := splunklib.HealthSplunkdDetails{}
 	if err := hm.splunk.Client.Read(&splunkdHealth); err != nil {
-		level.Error(hm.logger).Log("msg", "failed to read health data", "err", err)
+		hm.logger.Error("failed to read health data", "err", err)
 		return false
 	}
 
 	ret := hm.collectMetricsSplunkd(ch, "", &splunkdHealth.Content)
 
-	level.Info(hm.logger).Log("msg", "Done collecting Splunkd Health measures")
+	hm.logger.Info("Done collecting Splunkd Health measures")
 
 	// collect deployment health metrics
 
-	level.Info(hm.logger).Log("msg", "Collecting Deployment Health measures")
+	hm.logger.Info("Collecting Deployment Health measures")
 
 	deploymentHealth := splunklib.HealthDeploymentDetails{}
 	if err := hm.splunk.Client.Read(&deploymentHealth); err != nil {
-		level.Error(hm.logger).Log("msg", "failed to read health data", "err", err)
+		hm.logger.Error("failed to read health data", "err", err)
 		return false
 	}
 
 	ret = ret && hm.collectMetricsDeployment(ch, "", deploymentHealth.Content.Features)
-	level.Info(hm.logger).Log("msg", "Done collecting Deployment Health measures")
+	hm.logger.Info("Done collecting Deployment Health measures")
 
 	return ret
 }
@@ -79,7 +78,7 @@ func (hm *HealthManager) collectMetricsSplunkd(ch chan<- prometheus.Metric, path
 	if !fh.Disabled {
 		healthValue, err := hm.healthToFloat(fh.Health)
 		if err != nil {
-			level.Error(hm.logger).Log("msg", "Cannot get metrics because of health value", "path", path, "err", err)
+			hm.logger.Error("Cannot get metrics because of health value", "path", path, "err", err)
 			ret = false
 		}
 		displayPath := path
@@ -102,7 +101,7 @@ func (hm *HealthManager) collectMetricsSplunkd(ch chan<- prometheus.Metric, path
 // collectMetricsDeployment recursively get all metric measures from a health endpoint result and sends them in the channel
 // disabled features are not measured
 func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, path string, data map[string]interface{}) bool {
-	level.Debug(hm.logger).Log("msg", "Getting Deployment metrics", "path", path)
+	hm.logger.Debug("Getting Deployment metrics", "path", path)
 	ret := true
 	var disabled bool = false
 	var health string      // health of current level
@@ -110,14 +109,14 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 	var num_yellow float64 // num_yellow for current level
 
 	for key, ival := range data {
-		level.Debug(hm.logger).Log("msg", "Processing", "key", key, "path", path)
+		hm.logger.Debug("Processing", "key", key, "path", path)
 
 		switch key {
 		case "health":
 			if s, ok := ival.(string); ok {
 				health = s
 			} else {
-				level.Error(hm.logger).Log("msg", "unexpected type for health field", "path", path, "value", ival)
+				hm.logger.Error("unexpected type for health field", "path", path, "value", ival)
 				ret = false
 			}
 			continue
@@ -125,7 +124,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 			if f, ok := ival.(float64); ok {
 				num_red = f
 			} else {
-				level.Error(hm.logger).Log("msg", "unexpected type for num_red field", "path", path, "value", ival)
+				hm.logger.Error("unexpected type for num_red field", "path", path, "value", ival)
 				ret = false
 			}
 			continue
@@ -133,7 +132,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 			if f, ok := ival.(float64); ok {
 				num_yellow = f
 			} else {
-				level.Error(hm.logger).Log("msg", "unexpected type for num_yellow field", "path", path, "value", ival)
+				hm.logger.Error("unexpected type for num_yellow field", "path", path, "value", ival)
 				ret = false
 			}
 			continue
@@ -141,7 +140,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 			if b, ok := ival.(bool); ok {
 				disabled = b
 			} else {
-				level.Error(hm.logger).Log("msg", "unexpected type for disabled field", "path", path, "value", ival)
+				hm.logger.Error("unexpected type for disabled field", "path", path, "value", ival)
 				ret = false
 			}
 			continue
@@ -155,13 +154,13 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 			// recursively get lower level metrics
 			ret = ret && hm.collectMetricsDeployment(ch, newPath, v)
 		default:
-			level.Debug(hm.logger).Log("msg", "unknown type for key", "key", key, "path", path)
+			hm.logger.Debug("unknown type for key", "key", key, "path", path)
 		}
 	}
-	level.Debug(hm.logger).Log("num_red", num_red, "num_yellow", num_yellow)
+	hm.logger.Debug("health counts", "num_red", num_red, "num_yellow", num_yellow)
 
 	skipMetric := false
-	level.Debug(hm.logger).Log("path", path, "lenpath", len(path))
+	hm.logger.Debug("path length", "path", path, "lenpath", len(path))
 	skipMetric = skipMetric || disabled     // ignore disabled metrics
 	skipMetric = skipMetric || health == "" // ignore when we cannot parse health
 
@@ -173,7 +172,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 	if !skipMetric {
 		healthValue, err := hm.healthToFloat(health)
 		if err != nil {
-			level.Error(hm.logger).Log("msg", "Cannot get metrics because of unknown health value", "path", path, "err", err)
+			hm.logger.Error("Cannot get metrics because of unknown health value", "path", path, "err", err)
 			ret = false
 		}
 		displayPath := path

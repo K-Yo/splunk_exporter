@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -9,8 +10,6 @@ import (
 
 	"github.com/K-Yo/splunk_exporter/config"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/splunk/go-splunk-client/pkg/authenticators"
 	splunkclient "github.com/splunk/go-splunk-client/pkg/client"
@@ -36,7 +35,7 @@ var (
 // Exporter collects Splunk stats from the given instance and exports them using the prometheus metrics package.
 type Exporter struct {
 	splunk         *splunklib.Splunk
-	logger         log.Logger
+	logger         *slog.Logger
 	indexedMetrics *MetricsManager
 	healthMetrics  *HealthManager
 	apiMetrics     map[string]*prometheus.Desc
@@ -67,7 +66,7 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 	// Caveat: TLSInsecureSkipVerify changes won't affect a Transport that was already
 	// built from the old value; that requires a process restart to take effect.
 	if err := applySplunkOpts(e.splunk.Client, opts, e.logger); err != nil {
-		level.Error(e.logger).Log("msg", "Could not update Splunk client", "err", err)
+		e.logger.Error("Could not update Splunk client", "err", err)
 	}
 }
 
@@ -81,7 +80,7 @@ type SplunkOpts struct {
 
 // getSplunkClient generates a Splunk client from parameters
 // this function validates parameters and returns an error if they are not valid.
-func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, error) {
+func getSplunkClient(opts SplunkOpts, logger *slog.Logger) (*splunkclient.Client, error) {
 	client := &splunkclient.Client{}
 	if err := applySplunkOpts(client, opts, logger); err != nil {
 		return nil, err
@@ -90,7 +89,7 @@ func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, 
 }
 
 // applySplunkOpts validates opts and applies them to client in place.
-func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger log.Logger) error {
+func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger *slog.Logger) error {
 	if !strings.Contains(opts.URI, "://") {
 		opts.URI = "https://" + opts.URI
 	}
@@ -104,14 +103,14 @@ func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger log.Lo
 
 	var authenticator splunkclient.Authenticator
 	if len(opts.Token) > 0 {
-		level.Info(logger).Log("msg", "Token is defined, we will use it for authentication.")
+		logger.Info("Token is defined, we will use it for authentication.")
 		authenticator = authenticators.Token{
 			Token: opts.Token,
 		}
 	} else {
-		level.Info(logger).Log("msg", "Token is not defined, we will use password authentication.", "username", opts.Username)
+		logger.Info("Token is not defined, we will use password authentication.", "username", opts.Username)
 		if len(opts.Password) == 0 {
-			level.Warn(logger).Log("msg", "Password seems to be undefined.")
+			logger.Warn("Password seems to be undefined.")
 		}
 		authenticator = &authenticators.Password{
 			Username: opts.Username,
@@ -127,12 +126,12 @@ func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger log.Lo
 }
 
 // New creates a new exporter for Splunk metrics
-func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Exporter, error) {
+func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric) (*Exporter, error) {
 
 	client, err := getSplunkClient(opts, logger)
 
 	if err != nil {
-		level.Error(logger).Log("msg", "Could not get Splunk client", "err", err)
+		logger.Error("Could not get Splunk client", "err", err)
 		return nil, err
 	}
 
@@ -144,7 +143,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 	metricsManager := newMetricsManager(metricsConf, namespace, &spk, logger)
 	healthManager := newHealthManager(namespace, &spk, logger)
 
-	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
+	logger.Info("Started Exporter", "instance", client.URL)
 
 	return &Exporter{
 		splunk:         &spk,
@@ -196,10 +195,10 @@ func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
 
 func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
 	ret := true
-	level.Info(e.logger).Log("msg", "Collecting Indexer measures")
+	e.logger.Info("Collecting Indexer measures")
 	introspectionIndexer := splunklib.ServerIntrospectionIndexer{}
 	if err := e.splunk.Client.Read(&introspectionIndexer); err != nil {
-		level.Error(e.logger).Log("msg", "failed to read indexer data", "err", err)
+		e.logger.Error("failed to read indexer data", "err", err)
 		ret = false
 	}
 
@@ -211,15 +210,15 @@ func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
 
 	indexes := make([]splunklib.DataIndex, 0)
 	if err := e.splunk.Client.List(&indexes); err != nil {
-		level.Error(e.logger).Log("msg", "failed to list indexes", "err", err)
+		e.logger.Error("failed to list indexes", "err", err)
 		ret = false
 	}
 	for _, i := range indexes {
-		level.Debug(e.logger).Log("msg", "processing index", "index", i.ID.Title)
+		e.logger.Debug("processing index", "index", i.ID.Title)
 		ret = ret && e.measureIndex(ch, &i)
 	}
 
-	level.Info(e.logger).Log("msg", "Done collecting Indexer measures")
+	e.logger.Info("Done collecting Indexer measures")
 	return ret
 }
 

@@ -1,13 +1,13 @@
 package splunk
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/splunk/go-splunk-client/pkg/authenticators"
 	splunkclient "github.com/splunk/go-splunk-client/pkg/client"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func TestGetDimensions_QueryErrorDoesNotHang(t *testing.T) {
 	defer server.Close()
 
 	_, w, _ := os.Pipe()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	client := &splunkclient.Client{
 		URL:           server.URL,
