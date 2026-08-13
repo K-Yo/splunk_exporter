@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/common v0.48.0
 	github.com/prometheus/exporter-toolkit v0.11.0
 	github.com/splunk/go-splunk-client v0.0.1
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
