@@ -114,16 +114,36 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 
 		switch key {
 		case "health":
-			health = ival.(string)
+			if s, ok := ival.(string); ok {
+				health = s
+			} else {
+				level.Error(hm.logger).Log("msg", "unexpected type for health field", "path", path, "value", ival)
+				ret = false
+			}
 			continue
 		case "num_red":
-			num_red = ival.(float64)
+			if f, ok := ival.(float64); ok {
+				num_red = f
+			} else {
+				level.Error(hm.logger).Log("msg", "unexpected type for num_red field", "path", path, "value", ival)
+				ret = false
+			}
 			continue
 		case "num_yellow":
-			num_yellow = ival.(float64)
+			if f, ok := ival.(float64); ok {
+				num_yellow = f
+			} else {
+				level.Error(hm.logger).Log("msg", "unexpected type for num_yellow field", "path", path, "value", ival)
+				ret = false
+			}
 			continue
 		case "disabled":
-			disabled = ival.(bool)
+			if b, ok := ival.(bool); ok {
+				disabled = b
+			} else {
+				level.Error(hm.logger).Log("msg", "unexpected type for disabled field", "path", path, "value", ival)
+				ret = false
+			}
 			continue
 		case "eai:acl":
 			continue
