@@ -4,22 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	splunkclient "github.com/splunk/go-splunk-client/pkg/client"
 )
 
 type Splunk struct {
 	Client *splunkclient.Client
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
-type searchCallback func(data *SearchAPIResult, logger log.Logger) error
+type searchCallback func(data *SearchAPIResult, logger *slog.Logger) error
 
 // GetDimensions returns the dimensions by alphabetical order for one metric
 // it will return nil if no dimension exists
@@ -27,7 +26,7 @@ func (s *Splunk) GetDimensions(index string, metric string) []string {
 	search := dimensionsQuery(index, metric)
 	ch := make(chan string)
 
-	callback := func(data *SearchAPIResult, logger log.Logger) error {
+	callback := func(data *SearchAPIResult, logger *slog.Logger) error {
 		for _, d := range data.Results {
 			ch <- d["dims"]
 		}
@@ -39,7 +38,7 @@ func (s *Splunk) GetDimensions(index string, metric string) []string {
 		defer close(ch)
 		err := s.query(search, callback)
 		if err != nil {
-			level.Error(s.Logger).Log("msg", "failed to get dimensions", "err", err)
+			s.Logger.Error("failed to get dimensions", "err", err)
 		}
 	}()
 	// get all dimensions
@@ -59,13 +58,13 @@ type MetricMeasure struct {
 // callback will be called on each measure
 // errors on callback will be logged, and processing will continue
 func (s *Splunk) GetMetricValues(index string, metric string, callback func(measure MetricMeasure) error) error {
-	level.Debug(s.Logger).Log("msg", "Getting metric values", "index", index, "metric_name", metric)
+	s.Logger.Debug("Getting metric values", "index", index, "metric_name", metric)
 	search := metricQuery(index, metric)
-	queryCallback := func(data *SearchAPIResult, logger log.Logger) error {
+	queryCallback := func(data *SearchAPIResult, logger *slog.Logger) error {
 		for _, m := range data.Results {
 			name, ok := m["metric_name"]
 			if !ok {
-				level.Error(s.Logger).Log("msg", "could not find \"metric_name\" in splunk results.")
+				s.Logger.Error("could not find \"metric_name\" in splunk results.")
 				// we ignore this result
 				continue
 			}
@@ -74,16 +73,16 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 			for k := range m {
 				dimensions = append(dimensions, k)
 			}
-			level.Debug(logger).Log("msg", "processing metric", "metric_name", name, "dimensions", strings.Join(dimensions, ", "))
+			logger.Debug("processing metric", "metric_name", name, "dimensions", strings.Join(dimensions, ", "))
 			value, ok := m["value"]
 			if !ok {
-				level.Error(s.Logger).Log("msg", "could not find \"value\" in splunk results.")
+				s.Logger.Error("could not find \"value\" in splunk results.")
 				// we ignore this result
 				continue
 			}
 			fValue, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				level.Error(s.Logger).Log("msg", "Failed to parse value", "value", value, "err", err)
+				s.Logger.Error("Failed to parse value", "value", value, "err", err)
 				// we ignore this result
 				continue
 			}
@@ -94,7 +93,7 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 				Labels: m,
 			}
 			if err := callback(measure); err != nil {
-				level.Error(s.Logger).Log("msg", "Failed to run callback on measure", "measure", m)
+				s.Logger.Error("Failed to run callback on measure", "measure", m)
 			}
 		}
 		return nil
@@ -104,7 +103,7 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 
 // query will search splunk
 func (s *Splunk) query(search string, callbackFunc searchCallback) error {
-	level.Debug(s.Logger).Log("msg", "performing Splunk query", "search", search)
+	s.Logger.Debug("performing Splunk query", "search", search)
 	builder := func(req *http.Request) error {
 		u, err := url.Parse(fmt.Sprintf("%s/%s", s.Client.URL, "services/search/v2/jobs"))
 		if err != nil {
@@ -129,10 +128,10 @@ func (s *Splunk) query(search string, callbackFunc searchCallback) error {
 	handler := func(resp *http.Response) error {
 		var data SearchAPIResult
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			level.Error(s.Logger).Log("msg", "could not decode payload", "err", err, "status", resp.Status)
+			s.Logger.Error("could not decode payload", "err", err, "status", resp.Status)
 			return err
 		}
-		level.Info(s.Logger).Log("msg", "received response from search, calling callback", "status", resp.Status, "num_results", len(data.Results))
+		s.Logger.Info("received response from search, calling callback", "status", resp.Status, "num_results", len(data.Results))
 		return callbackFunc(&data, s.Logger)
 	}
 	return s.Client.RequestAndHandle(builder, handler)
