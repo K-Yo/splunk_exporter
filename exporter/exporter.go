@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/K-Yo/splunk_exporter/config"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
@@ -39,6 +40,12 @@ type Exporter struct {
 	indexedMetrics *MetricsManager
 	healthMetrics  *HealthManager
 	apiMetrics     map[string]*prometheus.Desc
+	apiMetricsMu   sync.Mutex // guards apiMetrics
+
+	// confMu serializes UpdateConf (triggered by SIGHUP, on its own goroutine)
+	// against Collect (triggered by an HTTP scrape): both read/write the same
+	// underlying splunk client fields (URL, Authenticator, TLSInsecureSkipVerify).
+	confMu sync.RWMutex
 }
 
 func (e *Exporter) UpdateConf(conf *config.Config) {
@@ -50,6 +57,9 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 		Password: conf.Password,
 		Insecure: conf.Insecure,
 	}
+
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
 
 	// Mutate the existing client in place rather than replacing it: go-splunk-client
 	// lazily caches an *http.Client per Client instance and exposes no way to close
@@ -155,6 +165,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the stats from configured Splunk and delivers them
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+	e.confMu.RLock()
+	defer e.confMu.RUnlock()
+
 	ok := e.collectConfiguredMetrics(ch)
 	ok = e.collectHealthMetrics(ch) && ok
 	ok = e.collectIndexerMetrics(ch) && ok
@@ -259,6 +272,8 @@ func (e *Exporter) CreateIfNeededThenMeasure(
 	labelValues []string) {
 
 	metricFQName := prometheus.BuildFQName(namespace, subsystem, name)
+
+	e.apiMetricsMu.Lock()
 	descriptor, exists := e.apiMetrics[metricFQName]
 	if !exists {
 		descriptor = prometheus.NewDesc(
@@ -269,6 +284,7 @@ func (e *Exporter) CreateIfNeededThenMeasure(
 		)
 		e.apiMetrics[metricFQName] = descriptor
 	}
+	e.apiMetricsMu.Unlock()
 
 	// measure
 	ch <- prometheus.MustNewConstMetric(

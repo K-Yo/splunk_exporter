@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/K-Yo/splunk_exporter/config"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
@@ -27,6 +28,7 @@ type MetricsManager struct {
 	splunk    *splunklib.Splunk // Splunk client
 	namespace string            // prometheus namespace for the metrics
 	metrics   map[string]Metric // index format is index&metric_name
+	metricsMu sync.Mutex        // guards metrics
 	logger    log.Logger
 }
 
@@ -36,11 +38,13 @@ func (mm *MetricsManager) Add(metric config.Metric) {
 	level.Debug(mm.logger).Log("msg", "Registering metric", "namespace", "metrics", "name", metric.Name, "index", metric.Index)
 
 	key := fmt.Sprintf("%s&%s", metric.Index, metric.Name)
+
+	mm.metricsMu.Lock()
 	mm.metrics[key] = Metric{
 		Name:  metric.Name,
 		Index: metric.Index,
 	}
-
+	mm.metricsMu.Unlock()
 }
 
 // CollectMeasures will get all measures and send generated metrics in channel
@@ -65,8 +69,15 @@ func (mm *MetricsManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
 		return nil
 	}
 
-	ret := true
+	mm.metricsMu.Lock()
+	keys := make([]string, 0, len(mm.metrics))
 	for key := range mm.metrics {
+		keys = append(keys, key)
+	}
+	mm.metricsMu.Unlock()
+
+	ret := true
+	for _, key := range keys {
 		ret = ret && mm.ProcessOneMeasure(key, processMetricCallback)
 	}
 
@@ -76,9 +87,12 @@ func (mm *MetricsManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
 
 // ProcessOneMeasure gets a measure from splunk then calls the callback
 func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.MetricMeasure, *prometheus.Desc) error) bool {
+	mm.metricsMu.Lock()
 	metric, ok := mm.metrics[key]
 	if !ok {
+		mm.metricsMu.Unlock()
 		level.Error(mm.logger).Log("msg", "Unknown metric name, this should not happen", "name", key)
+		return false
 	}
 	if metric.Desc == nil {
 		level.Debug(mm.logger).Log("msg", "First time seeing this metric, will create desc for it.", "name", key)
@@ -93,6 +107,8 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.
 		metric.LabelsMap = labelsMap
 		mm.metrics[key] = metric
 	}
+	mm.metricsMu.Unlock()
+
 	metricName, index, err := mm.parseMetricKey(key)
 	if err != nil {
 		level.Error(mm.logger).Log("msg", "failed parsing a metric key", "key", key, "error", err)
