@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"gopkg.in/yaml.v3"
@@ -47,7 +47,7 @@ func NewSafeConfig(reg prometheus.Registerer) *SafeConfig {
 	return &SafeConfig{C: &Config{}, configReloadSuccess: configReloadSuccess, configReloadSeconds: configReloadSeconds}
 }
 
-func (sc *SafeConfig) ReloadConfig(confFile string, logger log.Logger) (err error) {
+func (sc *SafeConfig) ReloadConfig(confFile string, logger *slog.Logger) (err error) {
 	var c = &Config{}
 	defer func() {
 		if err != nil {

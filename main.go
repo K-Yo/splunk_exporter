@@ -13,10 +13,9 @@ import (
 	"syscall"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -52,18 +51,18 @@ func run() int {
 
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.Version(version.Print("splunk_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 
-	level.Info(logger).Log("msg", "Starting splunk_exporter", "version", version.Info())
-	level.Info(logger).Log("build_context", version.BuildContext())
+	logger.Info("Starting splunk_exporter", "version", version.Info())
+	logger.Info("build context", "build_context", version.BuildContext())
 
 	if err := sc.ReloadConfig(*configFile, logger); err != nil {
-		level.Error(logger).Log("msg", "Error loading config", "err", err)
+		logger.Error("Error loading config", "err", err)
 		return 1
 	}
 
@@ -77,7 +76,7 @@ func run() int {
 	}
 	exp, err := exporter.New(opts, logger, sc.C.Metrics)
 	if err != nil {
-		level.Error(logger).Log("msg", "could not create exporter", "err", err)
+		logger.Error("could not create exporter", "err", err)
 		return 1
 	}
 
@@ -86,17 +85,17 @@ func run() int {
 	// Infer or set Splunk exporter externalURL
 	listenAddrs := toolkitFlags.WebListenAddresses
 	if *externalURL == "" && *toolkitFlags.WebSystemdSocket {
-		level.Error(logger).Log("msg", "Cannot automatically infer external URL with systemd socket listener. Please provide --web.external-url")
+		logger.Error("Cannot automatically infer external URL with systemd socket listener. Please provide --web.external-url")
 		return 1
 	} else if *externalURL == "" && len(*listenAddrs) > 1 {
-		level.Info(logger).Log("msg", "Inferring external URL from first provided listen address")
+		logger.Info("Inferring external URL from first provided listen address")
 	}
 	beURL, err := computeExternalURL(*externalURL, (*listenAddrs)[0])
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to determine external URL", "err", err)
+		logger.Error("failed to determine external URL", "err", err)
 		return 1
 	}
-	level.Debug(logger).Log("externalURL", beURL.String())
+	logger.Debug("computed external URL", "externalURL", beURL.String())
 
 	// Default -web.route-prefix to path of -web.external-url.
 	if *routePrefix == "" {
@@ -110,7 +109,7 @@ func run() int {
 	if *routePrefix != "/" {
 		*routePrefix = *routePrefix + "/"
 	}
-	level.Debug(logger).Log("routePrefix", *routePrefix)
+	logger.Debug("computed route prefix", "routePrefix", *routePrefix)
 
 	hup := make(chan os.Signal, 1)
 	reloadCh := make(chan chan error)
@@ -120,16 +119,16 @@ func run() int {
 			select {
 			case <-hup:
 				if err := sc.ReloadConfig(*configFile, logger); err != nil {
-					level.Error(logger).Log("msg", "Error reloading config", "err", err)
+					logger.Error("Error reloading config", "err", err)
 					continue
 				}
-				level.Info(logger).Log("msg", "Reloaded config file")
+				logger.Info("Reloaded config file")
 			case rc := <-reloadCh:
 				if err := sc.ReloadConfig(*configFile, logger); err != nil {
-					level.Error(logger).Log("msg", "Error reloading config", "err", err)
+					logger.Error("Error reloading config", "err", err)
 					rc <- err
 				} else {
-					level.Info(logger).Log("msg", "Reloaded config file")
+					logger.Info("Reloaded config file")
 					rc <- nil
 				}
 			}
@@ -183,7 +182,7 @@ func run() int {
 		c, err := yaml.Marshal(sc.C)
 		sc.RUnlock()
 		if err != nil {
-			level.Warn(logger).Log("msg", "Error marshalling configuration", "err", err)
+			logger.Warn("Error marshalling configuration", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -196,7 +195,7 @@ func run() int {
 	signal.Notify(term, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		if err := web.ListenAndServe(srv, toolkitFlags, logger); err != nil {
-			level.Error(logger).Log("msg", "Error starting HTTP server", "err", err)
+			logger.Error("Error starting HTTP server", "err", err)
 			close(srvc)
 		}
 	}()
@@ -204,7 +203,7 @@ func run() int {
 	for {
 		select {
 		case <-term:
-			level.Info(logger).Log("msg", "Received SIGTERM, exiting gracefully...")
+			logger.Info("Received SIGTERM, exiting gracefully...")
 			return 0
 		case <-srvc:
 			return 1

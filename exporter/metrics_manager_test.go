@@ -3,6 +3,7 @@ package exporter
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/K-Yo/splunk_exporter/config"
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/splunk/go-splunk-client/pkg/authenticators"
 	splunkclient "github.com/splunk/go-splunk-client/pkg/client"
@@ -23,7 +23,7 @@ import (
 
 func TestParseMetricKey(t *testing.T) {
 	_, w, _ := os.Pipe()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 	mm := MetricsManager{
 		logger: logger,
 	}
@@ -38,7 +38,7 @@ func TestParseMetricKey(t *testing.T) {
 
 func TestNormalizeName(t *testing.T) {
 	_, w, _ := os.Pipe()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 	mm := MetricsManager{
 		logger: logger,
 	}
@@ -76,7 +76,7 @@ func TestProcessOneMeasure_CachesDimensions(t *testing.T) {
 	defer server.Close()
 
 	_, w, _ := os.Pipe()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	client := &splunkclient.Client{
 		URL:           server.URL,
@@ -121,7 +121,7 @@ func TestMetricsManager_ConcurrentAccess(t *testing.T) {
 
 	_, w, _ := os.Pipe()
 	defer w.Close()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	client := &splunkclient.Client{
 		URL:           server.URL,

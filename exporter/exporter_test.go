@@ -1,12 +1,12 @@
 package exporter
 
 import (
+	"log/slog"
 	"os"
 	"sync"
 	"testing"
 
 	"github.com/K-Yo/splunk_exporter/config"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +19,7 @@ import (
 func TestNew_InvalidSplunkURL(t *testing.T) {
 	_, w, _ := os.Pipe()
 	defer w.Close()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	exp, err := New(SplunkOpts{URI: ""}, logger, nil)
 
@@ -34,7 +34,7 @@ func TestNew_InvalidSplunkURL(t *testing.T) {
 func TestExporter_ConcurrentUpdateConfAndCollect(t *testing.T) {
 	_, w, _ := os.Pipe()
 	defer w.Close()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	// unroutable-but-immediately-refused address: fails fast, no real network needed.
 	exp, err := New(SplunkOpts{URI: "http://127.0.0.1:1"}, logger, nil)
@@ -78,7 +78,7 @@ func TestExporter_ConcurrentUpdateConfAndCollect(t *testing.T) {
 func TestExporter_ConcurrentCreateIfNeededThenMeasure(t *testing.T) {
 	_, w, _ := os.Pipe()
 	defer w.Close()
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	exp := &Exporter{
 		logger:     logger,

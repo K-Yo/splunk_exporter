@@ -3,13 +3,13 @@ package exporter
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 
 	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,7 @@ func TestDeployment(t *testing.T) {
 	_, w, _ := os.Pipe()
 	defer w.Close()
 
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 	hm := HealthManager{
 		logger:               logger,
 		deploymentDescriptor: prometheus.NewDesc("metric", "", []string{"name", "instance_id"}, nil),
@@ -61,7 +61,7 @@ func TestCollectMetricsDeployment_MalformedHealthField(t *testing.T) {
 	_, w, _ := os.Pipe()
 	defer w.Close()
 
-	logger := log.NewJSONLogger(w)
+	logger := slog.New(slog.NewTextHandler(w, nil))
 	hm := HealthManager{
 		logger:               logger,
 		deploymentDescriptor: prometheus.NewDesc("metric", "", []string{"name", "instance_id"}, nil),
