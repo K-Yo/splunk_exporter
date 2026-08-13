@@ -166,7 +166,7 @@ func (hm *HealthManager) collectMetricsDeployment(ch chan<- prometheus.Metric, p
 	skipMetric = skipMetric || health == "" // ignore when we cannot parse health
 
 	// ignore when it’s a metric ending with "/instances"
-	if len(path) > 10 {
+	if len(path) >= 10 {
 		skipMetric = skipMetric || (path[len(path)-10:] == "/instances")
 	}
 	// Add current metric

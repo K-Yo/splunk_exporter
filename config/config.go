@@ -60,7 +60,7 @@ func (sc *SafeConfig) ReloadConfig(confFile string, logger log.Logger) (err erro
 
 	yamlReader, err := os.Open(confFile)
 	if err != nil {
-		return fmt.Errorf("error reading config file: %s", err)
+		return fmt.Errorf("error reading config file: %w", err)
 	}
 	defer yamlReader.Close()
 
@@ -68,7 +68,7 @@ func (sc *SafeConfig) ReloadConfig(confFile string, logger log.Logger) (err erro
 	decoder.KnownFields(true)
 
 	if err = decoder.Decode(c); err != nil {
-		return fmt.Errorf("error parsing config file: %s", err)
+		return fmt.Errorf("error parsing config file: %w", err)
 	}
 
 	sc.Lock()
