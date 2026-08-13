@@ -1,10 +1,22 @@
 package exporter
 
 import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/K-Yo/splunk_exporter/config"
+	splunklib "github.com/K-Yo/splunk_exporter/splunk"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/splunk/go-splunk-client/pkg/authenticators"
+	splunkclient "github.com/splunk/go-splunk-client/pkg/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,4 +46,51 @@ func TestNormalizeName(t *testing.T) {
 
 	assert.Equal(t, "abc__d_j_k_l__", n)
 
+}
+
+// TestProcessOneMeasure_CachesDimensions reproduces the scenario where the
+// per-metric Desc/dimensions built on first use were never written back into
+// the metrics map, so every scrape re-fetched dimensions from Splunk instead
+// of using the cached value.
+func TestProcessOneMeasure_CachesDimensions(t *testing.T) {
+	var dimensionCalls int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		values, _ := url.ParseQuery(string(body))
+		search := values.Get("search")
+
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(search, "mvexpand") {
+			atomic.AddInt32(&dimensionCalls, 1)
+			json.NewEncoder(w).Encode(splunklib.SearchAPIResult{
+				Results: []map[string]string{{"dims": "host"}},
+			})
+			return
+		}
+		json.NewEncoder(w).Encode(splunklib.SearchAPIResult{
+			Results: []map[string]string{{"metric_name": "some.metric", "value": "1.0", "host": "server1"}},
+		})
+	}))
+	defer server.Close()
+
+	_, w, _ := os.Pipe()
+	logger := log.NewJSONLogger(w)
+
+	client := &splunkclient.Client{
+		URL:           server.URL,
+		Authenticator: authenticators.Token{Token: "test"},
+	}
+	spk := &splunklib.Splunk{Client: client, Logger: logger}
+
+	mm := newMetricsManager([]config.Metric{{Name: "some.metric", Index: "main"}}, "splunk_exporter", spk, logger)
+
+	key := "main&some.metric"
+	callback := func(m splunklib.MetricMeasure, d *prometheus.Desc) error { return nil }
+
+	assert.True(t, mm.ProcessOneMeasure(key, callback))
+	assert.True(t, mm.ProcessOneMeasure(key, callback))
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(&dimensionCalls), "dimensions should be fetched once and then cached across scrapes")
+	assert.NotNil(t, mm.metrics[key].Desc, "Desc built on first use must be persisted back into the metrics map")
 }
