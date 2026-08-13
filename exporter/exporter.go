@@ -51,12 +51,14 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 		Insecure: conf.Insecure,
 	}
 
-	client, err := getSplunkClient(opts, e.logger)
-
-	if err != nil {
-		level.Error(e.logger).Log("msg", "Could not get Splunk client", "err", err)
+	// Mutate the existing client in place rather than replacing it: go-splunk-client
+	// lazily caches an *http.Client per Client instance and exposes no way to close
+	// it, so swapping in a new Client on every reload abandons its pooled connections.
+	// Caveat: TLSInsecureSkipVerify changes won't affect a Transport that was already
+	// built from the old value; that requires a process restart to take effect.
+	if err := applySplunkOpts(e.splunk.Client, opts, e.logger); err != nil {
+		level.Error(e.logger).Log("msg", "Could not update Splunk client", "err", err)
 	}
-	e.splunk.Client = client
 }
 
 type SplunkOpts struct {
@@ -70,16 +72,24 @@ type SplunkOpts struct {
 // getSplunkClient generates a Splunk client from parameters
 // this function validates parameters and returns an error if they are not valid.
 func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, error) {
+	client := &splunkclient.Client{}
+	if err := applySplunkOpts(client, opts, logger); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
 
+// applySplunkOpts validates opts and applies them to client in place.
+func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger log.Logger) error {
 	if !strings.Contains(opts.URI, "://") {
 		opts.URI = "https://" + opts.URI
 	}
 	u, err := url.Parse(opts.URI)
 	if err != nil {
-		return nil, fmt.Errorf("invalid splunk URL: %s", err)
+		return fmt.Errorf("invalid splunk URL: %s", err)
 	}
 	if u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return nil, fmt.Errorf("invalid splunk URL: %s", opts.URI)
+		return fmt.Errorf("invalid splunk URL: %s", opts.URI)
 	}
 
 	var authenticator splunkclient.Authenticator
@@ -98,12 +108,12 @@ func getSplunkClient(opts SplunkOpts, logger log.Logger) (*splunkclient.Client, 
 			Password: opts.Password,
 		}
 	}
-	client := splunkclient.Client{
-		URL:                   opts.URI,
-		Authenticator:         authenticator,
-		TLSInsecureSkipVerify: opts.Insecure,
-	}
-	return &client, nil
+
+	client.URL = opts.URI
+	client.Authenticator = authenticator
+	client.TLSInsecureSkipVerify = opts.Insecure
+
+	return nil
 }
 
 // New creates a new exporter for Splunk metrics

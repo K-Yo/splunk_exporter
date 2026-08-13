@@ -91,6 +91,7 @@ func (mm *MetricsManager) ProcessOneMeasure(key string, callback func(splunklib.
 			labelsPromNames, nil,
 		)
 		metric.LabelsMap = labelsMap
+		mm.metrics[key] = metric
 	}
 	metricName, index, err := mm.parseMetricKey(key)
 	if err != nil {

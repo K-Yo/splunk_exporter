@@ -31,11 +31,12 @@ func (s *Splunk) GetDimensions(index string, metric string) []string {
 		for _, d := range data.Results {
 			ch <- d["dims"]
 		}
-		close(ch)
 		return nil
 	}
 
 	go func() {
+		// ch must be closed even if the query fails, otherwise the range below blocks forever.
+		defer close(ch)
 		err := s.query(search, callback)
 		if err != nil {
 			level.Error(s.Logger).Log("msg", "failed to get dimensions", "err", err)
