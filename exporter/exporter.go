@@ -39,6 +39,7 @@ type Exporter struct {
 	logger         log.Logger
 	indexedMetrics *MetricsManager
 	healthMetrics  *HealthManager
+	kvstoreMetrics *KVStoreManager
 	apiMetrics     map[string]*prometheus.Desc
 	apiMetricsMu   sync.Mutex // guards apiMetrics
 
@@ -143,6 +144,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 
 	metricsManager := newMetricsManager(metricsConf, namespace, &spk, logger)
 	healthManager := newHealthManager(namespace, &spk, logger)
+	kvstoreManager := newKVStoreManager(namespace, &spk, logger)
 
 	level.Info(logger).Log("msg", "Started Exporter", "instance", client.URL)
 
@@ -151,6 +153,7 @@ func New(opts SplunkOpts, logger log.Logger, metricsConf []config.Metric) (*Expo
 		logger:         logger,
 		indexedMetrics: metricsManager,
 		healthMetrics:  healthManager,
+		kvstoreMetrics: kvstoreManager,
 		apiMetrics:     make(map[string]*prometheus.Desc),
 	}, nil
 }
@@ -170,6 +173,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	ok := e.collectConfiguredMetrics(ch)
 	ok = e.collectHealthMetrics(ch) && ok
+	ok = e.collectKVStoreMetrics(ch) && ok
 	ok = e.collectIndexerMetrics(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
@@ -192,6 +196,11 @@ func (e *Exporter) collectConfiguredMetrics(ch chan<- prometheus.Metric) bool {
 // collectHealthMetrics grabs metrics from Splunk Health endpoints
 func (e *Exporter) collectHealthMetrics(ch chan<- prometheus.Metric) bool {
 	return e.healthMetrics.CollectMeasures(ch)
+}
+
+// collectKVStoreMetrics grabs metrics from Splunk KVStore status endpoint
+func (e *Exporter) collectKVStoreMetrics(ch chan<- prometheus.Metric) bool {
+	return e.kvstoreMetrics.CollectMeasures(ch)
 }
 
 func (e *Exporter) collectIndexerMetrics(ch chan<- prometheus.Metric) bool {
