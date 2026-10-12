@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.21 AS build
+FROM golang:1.26 AS build
 
 ARG SRC=.
 
 WORKDIR /app
 
-COPY ${SRC}/go.mod ${SRC}/go.mod ./
+COPY ${SRC}/go.mod ${SRC}/go.sum ./
 RUN go mod download
 
 COPY ${SRC} ./
