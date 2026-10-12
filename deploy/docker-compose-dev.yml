@@ -39,7 +39,7 @@ services:
       - monitoring
   
   splunk_exporter:
-    image: golang:1.21
+    image: golang:1.26
     ports:
       - 9115:9115
     expose:
