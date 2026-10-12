@@ -21,3 +21,8 @@ metrics:
     name: spl.mlog.searchscheduler.max_lag
   - index: _metrics
     name: spl.mlog.searchscheduler.skipped
+
+# Search head cluster and KV store replication monitoring (optional)
+# distributed search group, as defined on the Monitoring Console, holding search head cluster members
+shc:
+  server_group: dmc_searchheadclustergroup_shc

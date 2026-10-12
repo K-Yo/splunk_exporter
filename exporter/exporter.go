@@ -38,6 +38,7 @@ type Exporter struct {
 	logger         *slog.Logger
 	indexedMetrics *MetricsManager
 	healthMetrics  *HealthManager
+	shcMetrics     *SHCManager
 	apiMetrics     map[string]*prometheus.Desc
 	apiMetricsMu   sync.Mutex // guards apiMetrics
 
@@ -59,6 +60,8 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 
 	e.confMu.Lock()
 	defer e.confMu.Unlock()
+
+	e.shcMetrics.serverGroup = conf.SHC.ServerGroup
 
 	// Mutate the existing client in place rather than replacing it: go-splunk-client
 	// lazily caches an *http.Client per Client instance and exposes no way to close
@@ -126,7 +129,7 @@ func applySplunkOpts(client *splunkclient.Client, opts SplunkOpts, logger *slog.
 }
 
 // New creates a new exporter for Splunk metrics
-func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric) (*Exporter, error) {
+func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric, shcConf config.SHC) (*Exporter, error) {
 
 	client, err := getSplunkClient(opts, logger)
 
@@ -142,6 +145,7 @@ func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric) (*Ex
 
 	metricsManager := newMetricsManager(metricsConf, namespace, &spk, logger)
 	healthManager := newHealthManager(namespace, &spk, logger)
+	shcManager := newSHCManager(namespace, shcConf.ServerGroup, &spk, logger)
 
 	logger.Info("Started Exporter", "instance", client.URL)
 
@@ -150,6 +154,7 @@ func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric) (*Ex
 		logger:         logger,
 		indexedMetrics: metricsManager,
 		healthMetrics:  healthManager,
+		shcMetrics:     shcManager,
 		apiMetrics:     make(map[string]*prometheus.Desc),
 	}, nil
 }
@@ -169,6 +174,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	ok := e.collectConfiguredMetrics(ch)
 	ok = e.collectHealthMetrics(ch) && ok
+	ok = e.shcMetrics.CollectMeasures(ch) && ok
 	ok = e.collectIndexerMetrics(ch) && ok
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
