@@ -6,3 +6,5 @@ metrics:
     name: spl.intr.disk_objects.Indexes.data.total_event_count
   - index: _metrics
     name: spl.intr.disk_objects.Indexes.data.total_bucket_count
+shc:
+  server_group: dmc_searchheadclustergroup_shc

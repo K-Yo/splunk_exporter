@@ -30,3 +30,12 @@ func dimensionsQuery(index string, metric string) string {
 		| mvexpand dims`,
 		index, metric)
 }
+
+// restQuery builds the query reading a REST endpoint on every member of a distributed search group.
+// eai:* fields are dropped as some of them are multivalued, which search results decoding does not support.
+func restQuery(serverGroup string, endpoint string) string {
+	return fmt.Sprintf(`
+		| rest splunk_server_group="%s" %s
+		| fields - eai:*`,
+		serverGroup, endpoint)
+}

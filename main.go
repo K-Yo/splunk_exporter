@@ -74,7 +74,7 @@ func run() int {
 		Password: sc.C.Password,
 		Insecure: sc.C.Insecure,
 	}
-	exp, err := exporter.New(opts, logger, sc.C.Metrics)
+	exp, err := exporter.New(opts, logger, sc.C.Metrics, sc.C.SHC)
 	if err != nil {
 		logger.Error("could not create exporter", "err", err)
 		return 1

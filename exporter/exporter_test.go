@@ -21,7 +21,7 @@ func TestNew_InvalidSplunkURL(t *testing.T) {
 	defer w.Close()
 	logger := slog.New(slog.NewTextHandler(w, nil))
 
-	exp, err := New(SplunkOpts{URI: ""}, logger, nil)
+	exp, err := New(SplunkOpts{URI: ""}, logger, nil, config.SHC{})
 
 	assert.Error(t, err)
 	assert.Nil(t, exp)
@@ -37,7 +37,7 @@ func TestExporter_ConcurrentUpdateConfAndCollect(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(w, nil))
 
 	// unroutable-but-immediately-refused address: fails fast, no real network needed.
-	exp, err := New(SplunkOpts{URI: "http://127.0.0.1:1"}, logger, nil)
+	exp, err := New(SplunkOpts{URI: "http://127.0.0.1:1"}, logger, nil, config.SHC{})
 	if err != nil {
 		t.Fatalf("failed to build exporter: %v", err)
 	}

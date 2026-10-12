@@ -101,6 +101,24 @@ func (s *Splunk) GetMetricValues(index string, metric string, callback func(meas
 	return s.query(search, queryCallback)
 }
 
+// GetRestResults reads a REST endpoint (with its arguments, e.g. "/services/shcluster/status advanced=1")
+// on every member of a distributed search group, through the rest search command.
+// It returns one result per answering member: nested dictionaries are flattened into dotted
+// field names (e.g. "current.status"), and the member name is in the "splunk_server" field.
+func (s *Splunk) GetRestResults(serverGroup string, endpoint string) ([]map[string]string, error) {
+	results := make([]map[string]string, 0)
+	callback := func(data *SearchAPIResult, logger *slog.Logger) error {
+		// members that could not be reached are only reported in messages
+		if len(data.Messages) > 0 {
+			logger.Warn("search returned messages", "endpoint", endpoint, "messages", fmt.Sprint(data.Messages))
+		}
+		results = append(results, data.Results...)
+		return nil
+	}
+	err := s.query(restQuery(serverGroup, endpoint), callback)
+	return results, err
+}
+
 // query will search splunk
 func (s *Splunk) query(search string, callbackFunc searchCallback) error {
 	s.Logger.Debug("performing Splunk query", "search", search)

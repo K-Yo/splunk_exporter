@@ -16,6 +16,13 @@ type Metric struct {
 	Name  string `yaml:"name"`
 }
 
+// SHC configures search head cluster monitoring
+type SHC struct {
+	// ServerGroup is the distributed search group (as defined on the Monitoring Console) holding the cluster members.
+	// SHC monitoring is disabled when empty.
+	ServerGroup string `yaml:"server_group"`
+}
+
 type Config struct {
 	URL      string   `yaml:"url"`
 	Token    string   `yaml:"token"`
@@ -23,6 +30,7 @@ type Config struct {
 	Password string   `yaml:"password"`
 	Insecure bool     `yaml:"insecure"` // defaults to false
 	Metrics  []Metric `yaml:"metrics"`
+	SHC      SHC      `yaml:"shc"`
 }
 
 type SafeConfig struct {
