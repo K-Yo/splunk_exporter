@@ -1,0 +1,7 @@
+url: https://splunk:8089
+token: 'changeme'
+shc:
+  server_group: dmc_searchheadclustergroup_shc
+  server_groups:
+    - dmc_searchheadclustergroup_shc
+    - dmc_searchheadclustergroup_es_shc

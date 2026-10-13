@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,9 +19,23 @@ type Metric struct {
 
 // SHC configures search head cluster monitoring
 type SHC struct {
-	// ServerGroup is the distributed search group (as defined on the Monitoring Console) holding the cluster members.
-	// SHC monitoring is disabled when empty.
+	// ServerGroups are the distributed search groups (as defined on the Monitoring Console), each holding the members
+	// of one cluster. SHC monitoring is disabled when empty.
+	ServerGroups []string `yaml:"server_groups"`
+	// ServerGroup is a single distributed search group.
+	// Deprecated: use ServerGroups.
 	ServerGroup string `yaml:"server_group"`
+}
+
+// Groups returns configured distributed search groups, without duplicates
+func (s SHC) Groups() []string {
+	groups := make([]string, 0, len(s.ServerGroups)+1)
+	for _, group := range append([]string{s.ServerGroup}, s.ServerGroups...) {
+		if group != "" && !slices.Contains(groups, group) {
+			groups = append(groups, group)
+		}
+	}
+	return groups
 }
 
 type Config struct {

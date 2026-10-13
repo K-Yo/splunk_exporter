@@ -20,12 +20,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const brokenGroup = "broken"
+
 // testdata/shc_*.json are `| rest splunk_server_group=... | fields - eai:*` results captured from a
 // Monitoring Console on a 3 members search head cluster (Splunk 10.4.0), where:
 //   - SHC captain sh1 runs in America/New_York, KV store captain sh2 in Asia/Tokyo, sh3 in UTC
 //   - sh3 lost its configuration baseline with the captain ("Error pulling configurations from captain")
 //   - sh3 KV store (mongod) was killed
-func newTestSHCManager(t *testing.T, serverGroup string, kvstoreResults func([]map[string]string) []map[string]string) (*SHCManager, *int32) {
+//
+// Every group answers with these results, except brokenGroup, on which searches fail.
+func newTestSHCManager(t *testing.T, serverGroups []string, kvstoreResults func([]map[string]string) []map[string]string) (*SHCManager, *int32) {
 	var calls int32
 	fixture := func(name string) []map[string]string {
 		content, err := os.ReadFile("testdata/" + name)
@@ -48,6 +52,8 @@ func newTestSHCManager(t *testing.T, serverGroup string, kvstoreResults func([]m
 
 		w.Header().Set("Content-Type", "application/json")
 		switch {
+		case strings.Contains(search, `splunk_server_group="`+brokenGroup+`"`):
+			w.WriteHeader(http.StatusInternalServerError)
 		case strings.Contains(search, "/services/shcluster/status"):
 			json.NewEncoder(w).Encode(splunklib.SearchAPIResult{Results: shcStatus})
 		case strings.Contains(search, "/services/kvstore/status"):
@@ -65,7 +71,7 @@ func newTestSHCManager(t *testing.T, serverGroup string, kvstoreResults func([]m
 	}
 	spk := &splunklib.Splunk{Client: client, Logger: logger}
 
-	return newSHCManager("splunk_exporter", serverGroup, spk, logger), &calls
+	return newSHCManager("splunk_exporter", serverGroups, spk, logger), &calls
 }
 
 // collectorFunc adapts a collect function into an unchecked prometheus.Collector
@@ -97,33 +103,33 @@ func collectSHC(t *testing.T, sm *SHCManager) (bool, map[string]float64) {
 }
 
 func TestSHCManager_CollectMeasures(t *testing.T) {
-	sm, _ := newTestSHCManager(t, "dmc_searchheadclustergroup_soc_shc", nil)
+	sm, _ := newTestSHCManager(t, []string{"shc1"}, nil)
 
 	ok, measures := collectSHC(t, sm)
 	assert.True(t, ok)
 
 	// configuration replication
-	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh1}"])
-	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh2}"])
-	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3}"])
+	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh1,server_group=shc1}"])
+	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh2,server_group=shc1}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3,server_group=shc1}"])
 
 	// captain local time "Mon Oct 12 10:05:10 2026" is 14:05:10 UTC
-	assert.Equal(t, 1791813910.0, measures["splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh2}"])
-	assert.Equal(t, 1791813665.0, measures["splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh3}"])
-	assert.NotContains(t, measures, "splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh1}", "captain does not replicate from itself")
+	assert.Equal(t, 1791813910.0, measures["splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh2,server_group=shc1}"])
+	assert.Equal(t, 1791813665.0, measures["splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh3,server_group=shc1}"])
+	assert.NotContains(t, measures, "splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh1,server_group=shc1}", "captain does not replicate from itself")
 
 	// members status, every known state is exported
-	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_status{server=sh3,status=Up}"])
-	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_status{server=sh3,status=Down}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_status{server=sh3,server_group=shc1,status=Up}"])
+	assert.Equal(t, 0.0, measures["splunk_exporter_shc_member_status{server=sh3,server_group=shc1,status=Down}"])
 
 	// sh3 still reports its outdated KV store status
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_status{server=sh3,status=ready}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_status{server=sh3,server_group=shc1,status=ready}"])
 
 	// but other members see it down
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh1:8191,status=Non-captain KV store member}"])
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh2:8191,status=KV store captain}"])
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,status=Down}"])
-	assert.Equal(t, 0.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,status=Recovering}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh1:8191,server_group=shc1,status=Non-captain KV store member}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh2:8191,server_group=shc1,status=KV store captain}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,server_group=shc1,status=Down}"])
+	assert.Equal(t, 0.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,server_group=shc1,status=Recovering}"])
 
 	assert.Len(t, measures,
 		3*len(shcMemberStatuses)+3+2+3*len(kvstoreStatuses)+3*len(kvstoreReplicationStatuses),
@@ -141,12 +147,12 @@ func TestSHCManager_KVStoreViewWithoutCaptain(t *testing.T) {
 		}
 		return ret
 	}
-	sm, _ := newTestSHCManager(t, "dmc_searchheadclustergroup_soc_shc", withoutCaptain)
+	sm, _ := newTestSHCManager(t, []string{"shc1"}, withoutCaptain)
 
 	ok, measures := collectSHC(t, sm)
 	assert.True(t, ok)
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,status=Down}"])
-	assert.NotContains(t, measures, "splunk_exporter_kvstore_status{server=sh2,status=ready}")
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,server_group=shc1,status=Down}"])
+	assert.NotContains(t, measures, "splunk_exporter_kvstore_status{server=sh2,server_group=shc1,status=ready}")
 }
 
 // Without the SHC captain KV store date, its local time is unknown: last configuration replication
@@ -160,16 +166,16 @@ func TestSHCManager_CaptainLocalTimeUnknown(t *testing.T) {
 		}
 		return results
 	}
-	sm, _ := newTestSHCManager(t, "dmc_searchheadclustergroup_soc_shc", withoutCaptainDate)
+	sm, _ := newTestSHCManager(t, []string{"shc1"}, withoutCaptainDate)
 
 	ok, measures := collectSHC(t, sm)
 	assert.True(t, ok)
-	assert.NotContains(t, measures, "splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh2}")
-	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3}"])
+	assert.NotContains(t, measures, "splunk_exporter_shc_member_last_conf_replication_timestamp_seconds{server=sh2,server_group=shc1}")
+	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3,server_group=shc1}"])
 }
 
 func TestSHCManager_Disabled(t *testing.T) {
-	sm, calls := newTestSHCManager(t, "", nil)
+	sm, calls := newTestSHCManager(t, nil, nil)
 
 	ok, measures := collectSHC(t, sm)
 	assert.True(t, ok)
@@ -186,10 +192,37 @@ func TestSHCManager_UnknownStatus(t *testing.T) {
 		}
 		return results
 	}
-	sm, _ := newTestSHCManager(t, "dmc_searchheadclustergroup_soc_shc", unknownStatus)
+	sm, _ := newTestSHCManager(t, []string{"shc1"}, unknownStatus)
 
 	ok, measures := collectSHC(t, sm)
 	assert.True(t, ok)
-	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_status{server=sh2,status=brand new status}"])
-	assert.Equal(t, 0.0, measures["splunk_exporter_kvstore_status{server=sh2,status=ready}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_status{server=sh2,server_group=shc1,status=brand new status}"])
+	assert.Equal(t, 0.0, measures["splunk_exporter_kvstore_status{server=sh2,server_group=shc1,status=ready}"])
+}
+
+// Each cluster is measured on its own, with its distributed search group as label.
+func TestSHCManager_SeveralGroups(t *testing.T) {
+	sm, _ := newTestSHCManager(t, []string{"shc1", "shc2"}, nil)
+
+	ok, measures := collectSHC(t, sm)
+	assert.True(t, ok)
+	for _, group := range []string{"shc1", "shc2"} {
+		assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3,server_group="+group+"}"])
+		assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,server_group="+group+",status=Down}"])
+	}
+	assert.Len(t, measures,
+		2*(3*len(shcMemberStatuses)+3+2+3*len(kvstoreStatuses)+3*len(kvstoreReplicationStatuses)))
+}
+
+// A failing cluster fails the collection, but does not prevent measuring the others.
+func TestSHCManager_GroupFailure(t *testing.T) {
+	sm, _ := newTestSHCManager(t, []string{brokenGroup, "shc1"}, nil)
+
+	ok, measures := collectSHC(t, sm)
+	assert.False(t, ok)
+	assert.Equal(t, 1.0, measures["splunk_exporter_shc_member_out_of_sync{server=sh3,server_group=shc1}"])
+	assert.Equal(t, 1.0, measures["splunk_exporter_kvstore_member_replication_status{member=sh3:8191,server_group=shc1,status=Down}"])
+	for name := range measures {
+		assert.NotContains(t, name, "server_group="+brokenGroup)
+	}
 }

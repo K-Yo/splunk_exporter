@@ -23,6 +23,7 @@ metrics:
     name: spl.mlog.searchscheduler.skipped
 
 # Search head cluster and KV store replication monitoring (optional)
-# distributed search group, as defined on the Monitoring Console, holding search head cluster members
+# distributed search groups, as defined on the Monitoring Console, each holding the members of one search head cluster
 shc:
-  server_group: dmc_searchheadclustergroup_shc
+  server_groups:
+    - dmc_searchheadclustergroup_shc

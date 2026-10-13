@@ -33,7 +33,7 @@ var (
 // through the rest search command, using a distributed search group.
 type SHCManager struct {
 	splunk                       *splunklib.Splunk // Splunk client
-	serverGroup                  string            // distributed search group of cluster members, SHC monitoring is disabled when empty
+	serverGroups                 []string          // distributed search groups, one per cluster, SHC monitoring is disabled when empty
 	logger                       *slog.Logger
 	memberStatusDesc             *prometheus.Desc
 	memberOutOfSyncDesc          *prometheus.Desc
@@ -42,38 +42,38 @@ type SHCManager struct {
 	kvstoreMemberReplicationDesc *prometheus.Desc
 }
 
-func newSHCManager(namespace string, serverGroup string, spk *splunklib.Splunk, logger *slog.Logger) *SHCManager {
+func newSHCManager(namespace string, serverGroups []string, spk *splunklib.Splunk, logger *slog.Logger) *SHCManager {
 
 	logger.Debug("Initiating SHC manager")
 
 	sm := SHCManager{
-		splunk:      spk,
-		serverGroup: serverGroup,
-		logger:      logger,
+		splunk:       spk,
+		serverGroups: serverGroups,
+		logger:       logger,
 		memberStatusDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "shc", "member_status"),
 			"Search head cluster member status, from shcluster/status API",
-			[]string{"server", "status"}, nil,
+			[]string{"server_group", "server", "status"}, nil,
 		),
 		memberOutOfSyncDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "shc", "member_out_of_sync"),
 			"Whether search head cluster member configuration is out of sync with the captain, from shcluster/status API",
-			[]string{"server"}, nil,
+			[]string{"server_group", "server"}, nil,
 		),
 		memberLastConfReplication: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "shc", "member_last_conf_replication_timestamp_seconds"),
 			"When search head cluster member last pulled configurations from the captain, from shcluster/status API",
-			[]string{"server"}, nil,
+			[]string{"server_group", "server"}, nil,
 		),
 		kvstoreStatusDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "kvstore", "status"),
 			"KV store status of search head cluster member, from kvstore/status API",
-			[]string{"server", "status"}, nil,
+			[]string{"server_group", "server", "status"}, nil,
 		),
 		kvstoreMemberReplicationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "kvstore", "member_replication_status"),
 			"KV store replica set member replication status, as seen by the KV store captain, from kvstore/status API",
-			[]string{"member", "status"}, nil,
+			[]string{"server_group", "member", "status"}, nil,
 		),
 	}
 
@@ -84,41 +84,51 @@ func newSHCManager(namespace string, serverGroup string, spk *splunklib.Splunk, 
 // CollectMeasures will get all measures and send generated metrics in channel
 // returns true if everything went well
 func (sm *SHCManager) CollectMeasures(ch chan<- prometheus.Metric) bool {
-	if sm.serverGroup == "" {
+	if len(sm.serverGroups) == 0 {
 		sm.logger.Debug("No SHC server group configured, skipping SHC measures")
 		return true
 	}
 
-	sm.logger.Info("Collecting SHC measures", "server_group", sm.serverGroup)
+	// clusters are independent, a failure on one does not prevent measuring the others
+	ret := true
+	for _, group := range sm.serverGroups {
+		ret = sm.collectGroup(ch, group) && ret
+	}
+	return ret
+}
+
+// collectGroup measures the cluster whose members are in distributed search group
+func (sm *SHCManager) collectGroup(ch chan<- prometheus.Metric, group string) bool {
+	sm.logger.Info("Collecting SHC measures", "server_group", group)
 	ret := true
 
 	// KV store status is needed by cluster status, to get captain local time
-	kvstoreResults, err := sm.splunk.GetRestResults(sm.serverGroup, "/services/kvstore/status")
+	kvstoreResults, err := sm.splunk.GetRestResults(group, "/services/kvstore/status")
 	if err != nil {
-		sm.logger.Error("failed to read kvstore status", "err", err)
+		sm.logger.Error("failed to read kvstore status", "server_group", group, "err", err)
 		ret = false
 	} else {
-		ret = sm.measureKVStoreStatus(ch, kvstoreResults) && ret
+		ret = sm.measureKVStoreStatus(ch, group, kvstoreResults) && ret
 	}
 
-	clusterResults, err := sm.splunk.GetRestResults(sm.serverGroup, "/services/shcluster/status advanced=1")
+	clusterResults, err := sm.splunk.GetRestResults(group, "/services/shcluster/status advanced=1")
 	if err != nil {
-		sm.logger.Error("failed to read shcluster status", "err", err)
+		sm.logger.Error("failed to read shcluster status", "server_group", group, "err", err)
 		ret = false
 	} else {
-		ret = sm.measureClusterStatus(ch, clusterResults, kvstoreResults) && ret
+		ret = sm.measureClusterStatus(ch, group, clusterResults, kvstoreResults) && ret
 	}
 
-	sm.logger.Info("Done collecting SHC measures", "success", ret)
+	sm.logger.Info("Done collecting SHC measures", "server_group", group, "success", ret)
 
 	return ret
 }
 
 // measureClusterStatus measures cluster members from shcluster/status results
-func (sm *SHCManager) measureClusterStatus(ch chan<- prometheus.Metric, results []map[string]string, kvstoreResults []map[string]string) bool {
+func (sm *SHCManager) measureClusterStatus(ch chan<- prometheus.Metric, group string, results []map[string]string, kvstoreResults []map[string]string) bool {
 	// every member answers with the whole cluster view, prefer the one of the captain
 	if len(results) == 0 {
-		sm.logger.Error("no search head cluster member answered", "server_group", sm.serverGroup)
+		sm.logger.Error("no search head cluster member answered", "server_group", group)
 		return false
 	}
 	view := results[0]
@@ -133,7 +143,7 @@ func (sm *SHCManager) measureClusterStatus(ch chan<- prometheus.Metric, results 
 	captain := view["captain.label"]
 	captainOffset, offsetErr := localTimeOffset(kvstoreResults, captain)
 	if offsetErr != nil {
-		sm.logger.Warn("cannot get captain local time offset, skipping last configuration replication", "captain", captain, "err", offsetErr)
+		sm.logger.Warn("cannot get captain local time offset, skipping last configuration replication", "server_group", group, "captain", captain, "err", offsetErr)
 	}
 
 	ret := true
@@ -142,16 +152,16 @@ func (sm *SHCManager) measureClusterStatus(ch chan<- prometheus.Metric, results 
 		if server == "" {
 			server = guid
 		}
-		ret = sm.sendStateSet(ch, sm.memberStatusDesc, shcMemberStatuses, peer["status"], server) && ret
+		ret = sm.sendStateSet(ch, sm.memberStatusDesc, shcMemberStatuses, peer["status"], group, server) && ret
 
 		outOfSync, err := flagToFloat(peer["out_of_sync_node"])
 		if err != nil {
-			sm.logger.Error("unexpected out_of_sync_node value", "server", server, "err", err)
+			sm.logger.Error("unexpected out_of_sync_node value", "server_group", group, "server", server, "err", err)
 			ret = false
 			continue
 		}
 		ch <- prometheus.MustNewConstMetric(
-			sm.memberOutOfSyncDesc, prometheus.GaugeValue, outOfSync, server,
+			sm.memberOutOfSyncDesc, prometheus.GaugeValue, outOfSync, group, server,
 		)
 
 		// captain has none, and it is "Pending" right after a captain election
@@ -161,12 +171,12 @@ func (sm *SHCManager) measureClusterStatus(ch chan<- prometheus.Metric, results 
 		}
 		local, err := time.Parse(time.ANSIC, lastConfReplication)
 		if err != nil {
-			sm.logger.Error("unexpected last_conf_replication value", "server", server, "err", err)
+			sm.logger.Error("unexpected last_conf_replication value", "server_group", group, "server", server, "err", err)
 			ret = false
 			continue
 		}
 		ch <- prometheus.MustNewConstMetric(
-			sm.memberLastConfReplication, prometheus.GaugeValue, float64(local.Add(-captainOffset).Unix()), server,
+			sm.memberLastConfReplication, prometheus.GaugeValue, float64(local.Add(-captainOffset).Unix()), group, server,
 		)
 	}
 
@@ -197,12 +207,12 @@ func localTimeOffset(kvstoreResults []map[string]string, server string) (time.Du
 }
 
 // measureKVStoreStatus measures the KV store of each cluster member from kvstore/status results
-func (sm *SHCManager) measureKVStoreStatus(ch chan<- prometheus.Metric, results []map[string]string) bool {
+func (sm *SHCManager) measureKVStoreStatus(ch chan<- prometheus.Metric, group string, results []map[string]string) bool {
 	ret := true
 	var view map[string]string // replica set view, used for members replication status
 	for _, r := range results {
 		server := r["splunk_server"]
-		ret = sm.sendStateSet(ch, sm.kvstoreStatusDesc, kvstoreStatuses, r["current.status"], server) && ret
+		ret = sm.sendStateSet(ch, sm.kvstoreStatusDesc, kvstoreStatuses, r["current.status"], group, server) && ret
 
 		// a member whose KV store is down still answers, but with an outdated current.status
 		// and no members: replication status must be read from another member, preferably the captain
@@ -212,22 +222,22 @@ func (sm *SHCManager) measureKVStoreStatus(ch chan<- prometheus.Metric, results 
 	}
 
 	if view == nil {
-		sm.logger.Error("no KV store replica set view found", "server_group", sm.serverGroup)
+		sm.logger.Error("no KV store replica set view found", "server_group", group)
 		return false
 	}
 	for _, member := range groupFields(view, "members.") {
-		ret = sm.sendStateSet(ch, sm.kvstoreMemberReplicationDesc, kvstoreReplicationStatuses, member["replicationStatus"], member["hostAndPort"]) && ret
+		ret = sm.sendStateSet(ch, sm.kvstoreMemberReplicationDesc, kvstoreReplicationStatuses, member["replicationStatus"], group, member["hostAndPort"]) && ret
 	}
 
 	return ret
 }
 
-// sendStateSet sends one metric per known state for name: 1 for the current state, 0 for the others.
+// sendStateSet sends one metric per known state for name in group: 1 for the current state, 0 for the others.
 // Splunk casing is not consistent across versions, so states are matched case-insensitively.
 // An unknown current state is sent as an additional state so it is not lost.
-func (sm *SHCManager) sendStateSet(ch chan<- prometheus.Metric, desc *prometheus.Desc, states []string, current string, name string) bool {
+func (sm *SHCManager) sendStateSet(ch chan<- prometheus.Metric, desc *prometheus.Desc, states []string, current string, group string, name string) bool {
 	if current == "" {
-		sm.logger.Error("missing status", "name", name, "desc", desc.String())
+		sm.logger.Error("missing status", "server_group", group, "name", name, "desc", desc.String())
 		return false
 	}
 
@@ -238,11 +248,11 @@ func (sm *SHCManager) sendStateSet(ch chan<- prometheus.Metric, desc *prometheus
 			value = 1.0
 			known = true
 		}
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, name, state)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, group, name, state)
 	}
 	if !known {
-		sm.logger.Warn("unknown status", "name", name, "status", current)
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, 1.0, name, current)
+		sm.logger.Warn("unknown status", "server_group", group, "name", name, "status", current)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, 1.0, group, name, current)
 	}
 	return true
 }
