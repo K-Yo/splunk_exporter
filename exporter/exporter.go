@@ -61,7 +61,7 @@ func (e *Exporter) UpdateConf(conf *config.Config) {
 	e.confMu.Lock()
 	defer e.confMu.Unlock()
 
-	e.shcMetrics.serverGroup = conf.SHC.ServerGroup
+	e.shcMetrics.serverGroups = conf.SHC.Groups()
 
 	// Mutate the existing client in place rather than replacing it: go-splunk-client
 	// lazily caches an *http.Client per Client instance and exposes no way to close
@@ -145,7 +145,7 @@ func New(opts SplunkOpts, logger *slog.Logger, metricsConf []config.Metric, shcC
 
 	metricsManager := newMetricsManager(metricsConf, namespace, &spk, logger)
 	healthManager := newHealthManager(namespace, &spk, logger)
-	shcManager := newSHCManager(namespace, shcConf.ServerGroup, &spk, logger)
+	shcManager := newSHCManager(namespace, shcConf.Groups(), &spk, logger)
 
 	logger.Info("Started Exporter", "instance", client.URL)
 

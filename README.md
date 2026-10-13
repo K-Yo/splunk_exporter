@@ -55,21 +55,22 @@ All metrics are **Gauge**.
 
 ### from search head cluster members
 
-Only when `shc.server_group` is configured: endpoints are read on every member of this distributed search group (as defined on the Monitoring Console) with the `rest` search command.
+Only when `shc.server_groups` is configured: endpoints are read on every member of these distributed search groups (as defined on the Monitoring Console, one per cluster) with the `rest` search command.
+Each cluster is measured independently, with its distributed search group as `server_group` label.
 States are exported as state sets: one series per known state, `1` for the current state and `0` for the others.
 
-| Metric                                                               | Labels             | Description                                                                                                    |
-| -------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `splunk_exporter_shc_member_status`                                  | `server`, `status` | Member status (`Up`, `Down`, `ManualDetention`…) from shcluster/status                                         |
-| `splunk_exporter_shc_member_out_of_sync`                             | `server`           | `1` when member configuration is out of sync with the captain (e.g. lost common baseline)                      |
-| `splunk_exporter_shc_member_last_conf_replication_timestamp_seconds` | `server`           | When member last pulled configurations from the captain (captain local time converted using its KV store date) |
-| `splunk_exporter_kvstore_status`                                     | `server`, `status` | KV store status (`ready`, `failed`…) as reported by member itself, from kvstore/status                         |
-| `splunk_exporter_kvstore_member_replication_status`                  | `member`, `status` | KV store replica set member status (`Recovering`, `Down`…) as seen by KV store captain                         |
+| Metric                                                               | Labels                             | Description                                                                                                    |
+| -------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `splunk_exporter_shc_member_status`                                  | `server_group`, `server`, `status` | Member status (`Up`, `Down`, `ManualDetention`…) from shcluster/status                                         |
+| `splunk_exporter_shc_member_out_of_sync`                             | `server_group`, `server`           | `1` when member configuration is out of sync with the captain (e.g. lost common baseline)                      |
+| `splunk_exporter_shc_member_last_conf_replication_timestamp_seconds` | `server_group`, `server`           | When member last pulled configurations from the captain (captain local time converted using its KV store date) |
+| `splunk_exporter_kvstore_status`                                     | `server_group`, `server`, `status` | KV store status (`ready`, `failed`…) as reported by member itself, from kvstore/status                         |
+| `splunk_exporter_kvstore_member_replication_status`                  | `server_group`, `member`, `status` | KV store replica set member status (`Recovering`, `Down`…) as seen by KV store captain                         |
 
 ## 🚨 Alerting
 
 Suggested Prometheus alerting rules for search head cluster and KV store replication, to adapt (thresholds, `for` durations, severities) to your environment.
-`SplunkSHCMetricsMissing` only makes sense when `shc.server_group` is configured.
+`SplunkSHCMetricsMissing` only makes sense when `shc.server_groups` is configured; with several clusters, write one per group (e.g. `absent(splunk_exporter_shc_member_status{server_group="dmc_searchheadclustergroup_shc"})`), as `absent` cannot tell which one is missing.
 
 Some notes on choices:
 - members pull configurations from the captain every few seconds (`conf_replication_period`, 5s by default), so a 5 minutes old last pull means replication is stuck, even when the member is not (yet) flagged out of sync.
@@ -96,7 +97,7 @@ groups:
           severity: warning
         annotations:
           summary: "No search head cluster metrics"
-          description: "No member answered through the shc.server_group distributed search group for 10 minutes."
+          description: "No member answered through the shc.server_groups distributed search groups for 10 minutes."
 
       - alert: SplunkSHCMemberOutOfSync
         expr: splunk_exporter_shc_member_out_of_sync == 1
@@ -127,7 +128,7 @@ groups:
 
       - alert: SplunkKVStoreMemberNotReplicating
         expr: |
-          sum by (member) (
+          sum by (server_group, member) (
             splunk_exporter_kvstore_member_replication_status{status=~"KV store captain|Non-captain KV store member"}
           ) == 0
         for: 5m
